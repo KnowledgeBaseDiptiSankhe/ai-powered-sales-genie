@@ -1,0 +1,147 @@
+{
+  "name": "SalesGenie - Weekly Insights Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "bd6df091-7096-4749-8aaf-3f6e08ceb1fe",
+      "name": "Every Friday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 915303454,
+          "mode": "list",
+          "cachedResultName": "CRMLead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=915303454"
+        },
+        "options": {}
+      },
+      "id": "52c6efa4-7c2f-40be-82a8-666e5d4234fe",
+      "name": "Read Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lf = String.fromCharCode(10);\nconst now = Date.now();\nconst weekAgo = now - 7 * 24 * 60 * 60 * 1000;\nconst rows = $input.all().map(i => i.json).filter(r => r && Object.keys(r).length > 0);\nconst recent = rows.filter(r => {\n  const t = Date.parse(r.timestamp);\n  return !isNaN(t) && t >= weekAgo && t <= now;\n});\nconst windowLabel = new Date(weekAgo).toISOString().slice(0, 10) + \" to \" + new Date(now).toISOString().slice(0, 10);\n\nif (recent.length === 0) {\n  const body = \"SalesGenie Weekly Insights (\" + windowLabel + \")\" + lf + lf +\n    \"No inbound inquiries were processed this week.\" + lf +\n    \"No leads to report.\";\n  return [{ json: { has_activity: false, subject: \"SalesGenie Weekly Insights - No activity (\" + windowLabel + \")\", report: body } }];\n}\n\nconst norm = (s) => (s == null ? \"\" : String(s)).trim().toLowerCase();\nlet hot = 0, warm = 0, cold = 0, approved = 0, rejected = 0, other = 0;\nconst productCounts = {};\nfor (const r of recent) {\n  const score = norm(r.lead_score);\n  if (score === \"hot\") hot++;\n  else if (score === \"warm\") warm++;\n  else if (score === \"cold\") cold++;\n  const st = norm(r.status);\n  if (st === \"approved\") approved++;\n  else if (st === \"rejected\") rejected++;\n  else other++;\n  const rec = (r.recommendations == null ? \"\" : String(r.recommendations));\n  const products = rec.split(lf).map(x => x.split(\" - \")[0].trim()).filter(x => x);\n  for (const p of products) {\n    productCounts[p] = (productCounts[p] || 0) + 1;\n  }\n}\nconst topProducts = Object.keys(productCounts)\n  .map(k => ({ product: k, count: productCounts[k] }))\n  .sort((a, b) => b.count - a.count)\n  .slice(0, 5);\nconst topProductsText = topProducts.length\n  ? topProducts.map(p => \"  - \" + p.product + \" (\" + p.count + \")\").join(lf)\n  : \"  - None\";\n\nconst total = recent.length;\nconst pct = (n) => total ? Math.round((n / total) * 100) : 0;\n\nconst body = \"SalesGenie Weekly Insights (\" + windowLabel + \")\" + lf + lf +\n  \"Total inquiries processed: \" + total + lf + lf +\n  \"Lead scoring:\" + lf +\n  \"  - Hot:  \" + hot + \" (\" + pct(hot) + \"%)\" + lf +\n  \"  - Warm: \" + warm + \" (\" + pct(warm) + \"%)\" + lf +\n  \"  - Cold: \" + cold + \" (\" + pct(cold) + \"%)\" + lf + lf +\n  \"Approval outcomes:\" + lf +\n  \"  - Approved: \" + approved + lf +\n  \"  - Rejected: \" + rejected + lf +\n  (other ? \"  - Other/pending: \" + other + lf : \"\") + lf +\n  \"Top recommended products:\" + lf + topProductsText + lf;\n\nreturn [{ json: {\n  has_activity: true,\n  subject: \"SalesGenie Weekly Insights - \" + total + \" leads (\" + windowLabel + \")\",\n  report: body,\n  total: total, hot: hot, warm: warm, cold: cold,\n  approved: approved, rejected: rejected,\n  top_products: topProducts\n} }];"
+      },
+      "id": "f42fd716-d3be-4fd6-be73-541db6534175",
+      "name": "Aggregate Weekly Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "sankhe.dipti@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.report }}",
+        "options": {}
+      },
+      "id": "e590cf93-034f-4c29-b99d-bb17f3f687e1",
+      "name": "Email Weekly Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        0
+      ],
+      "webhookId": "ebec46b6-b997-480a-96a2-7f0cee21333c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "avES0uZpW89Rqd9g",
+          "name": "Innov Gmail"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Friday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Leads": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Email Weekly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f0f50353-80a2-4f73-bc57-54d0abaede27",
+  "meta": {
+    "instanceId": "76f1edadfc44187b235ad30dca4f13c2c8477f08431c30d661a49fb889397ef5"
+  },
+  "nodeGroups": [],
+  "id": "SnWbRqyYlfjLl3lK",
+  "tags": []
+}

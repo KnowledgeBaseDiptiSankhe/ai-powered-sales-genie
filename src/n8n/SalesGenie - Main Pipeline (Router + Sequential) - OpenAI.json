@@ -1,0 +1,1391 @@
+{
+  "name": "SalesGenie - Main Pipeline (Router + Sequential) - OpenAI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "salesgenie-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a2a271c9-47ca-434b-ab34-4cbdb9e59eac",
+      "name": "Inbound Email Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        64
+      ],
+      "webhookId": "298c8426-76bb-49a3-85c4-7f5de8dfcd4d"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84d00340-5e34-40ac-9052-eacbf9dc6e54",
+              "name": "sender_email",
+              "value": "={{ $json.body.from }}",
+              "type": "string"
+            },
+            {
+              "id": "1bc772ed-41c3-4397-82ce-d112d18b8fa0",
+              "name": "subject",
+              "value": "={{ $json.body.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "9244172b-3f60-44d8-ab98-00bb338b7221",
+              "name": "email_body",
+              "value": "={{ $json.body.text }}",
+              "type": "string"
+            },
+            {
+              "id": "abeda695-60af-495d-8a76-1f6c7b9f7d25",
+              "name": "received_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e95a8418-d7ab-4a14-a46f-806a6b30b640",
+              "name": "lead_id",
+              "value": "={{ $itemIndex + '-' + Date.now() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "120d6385-c5a3-41ca-a7a8-ce58a566e1a3",
+      "name": "Normalize Email Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 200, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Router/Dispatcher agent for Oak & Ember Interiors.\\nClassify the inbound email into exactly one route_type:\\n- \"sales_inquiry\": a genuine request for products, pricing, availability, or a purchase, including messages that mention a competitor.\\n- \"product_question\": a factual question about an existing product (e.g. colors, dimensions) with no purchase intent.\\n- \"spam\": irrelevant, promotional, nonsensical, or clearly not a real customer inquiry.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"route_type\": \"sales_inquiry|product_question|spam\", \"mentions_competitor\": true|false, \"reasoning\": \"short reason\"}' }, { role: 'user', content: `Subject: ${$json.subject}\\n\\nBody: ${$json.email_body}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "842a954e-06cd-4f02-a9a7-3ea3493676df",
+      "name": "Router Agent - Classify Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        64
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cloud.langfuse.com/api/public/ingestion1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'router-classify', input: $('Normalize Email Input').first().json.email_body, output: $json.choices[0].message.content, metadata: { workflow: 'SalesGenie', node: 'Log Trace - Router' }, timestamp: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "04f15763-efe1-4ed7-9010-45fcc9c54f98",
+      "name": "Log Trace - Router",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        -32
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "3WZfdIGEu6dp4lLK",
+          "name": "langfuseDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { route_type: 'spam', mentions_competitor: false, reasoning: 'parse_error', _parse_error: true }; }\nconst base = $('Normalize Email Input').first().json;\nreturn [{ json: { ...base, ...parsed, _router_raw: raw } }];\n"
+      },
+      "id": "12bb0951-9331-42f2-b854-1c0f8db2fcef",
+      "name": "Parse Router Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route_type}}",
+                    "rightValue": "sales_inquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "aa98e42e-ea26-4ba1-afc1-2403a1a3794f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route_type}}",
+                    "rightValue": "product_question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ac7f0bdd-a2fe-44e6-8cc8-7249e349fcba"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "spam"
+        }
+      },
+      "id": "b5c3ef79-8a37-476c-903e-043697fb7d21",
+      "name": "Route By Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 400, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Email Ingestion agent. Extract structured fields from the inquiry email below.\\nDo NOT invent or assume any field that is not stated or clearly implied by the text. If a field is missing, use null.\\nIf the email mentions a quantity and a total budget (e.g. \"10 chairs, budget $5000\"), compute per_unit_budget = total_budget / quantity.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"customer_name\": string|null, \"customer_email\": string|null, \"product_interest\": string|null, \"category_hint\": string|null,\\n \"budget_total\": number|null, \"quantity\": number|null, \"per_unit_budget\": number|null, \"urgency\": string|null,\\n \"business_context\": string|null, \"mentions_competitor\": true|false, \"competitor_name\": string|null}' }, { role: 'user', content: `Subject: ${$json.subject}\\n\\nBody: ${$json.email_body}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c41bcabe-ec5f-489f-86de-f4ac5cf8efd8",
+      "name": "Email Ingestion Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        352
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { _parse_error: true }; }\nconst base = $('Normalize Email Input').first().json;\nreturn [{ json: { ...base, ...parsed, _ingestion_raw: raw } }];\n"
+      },
+      "id": "cc32ec5a-2d32-479c-b215-2965b9bbe700",
+      "name": "Parse Ingestion Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 300, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Lead Qualifier agent. Classify the lead as Hot, Warm, or Cold using ONLY\\nthese signals from the extracted fields below — do not infer intent beyond what is stated:\\n\\nHot: explicit budget AND specific product/category AND an urgency signal (deadline, \"need by\", bulk quantity with real business context).\\nWarm: specific product/category interest OR budget stated, but not both, and no urgency signal.\\nCold: vague/no product detail AND no budget AND no urgency (e.g. \"I need furniture\").\\n\\nIf budget/product/urgency are missing, do NOT guess or fabricate them; treat as absent and score conservatively.\\nNever let a hot lead be scored as Cold if any two of (budget, product, urgency) are present — when uncertain, prefer the higher tier so a human reviews it.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"tier\": \"Hot|Warm|Cold\", \"reasoning\": \"short reason citing which signals were present or missing\",\\n \"missing_info_prompt\": string|null}' }, { role: 'user', content: JSON.stringify($json) } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "30a96373-dd65-4ffe-8572-b593dd00ec60",
+      "name": "Lead Qualifier Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        352
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { tier: 'Warm', reasoning: 'parse_error - defaulted to Warm for human review', _parse_error: true }; }\nconst base = $('Parse Ingestion Output').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "15f326c6-ddc4-42a3-844d-816ad0f79e5f",
+      "name": "Parse Qualifier Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E",
+          "mode": "list",
+          "cachedResultName": "product_catalog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 642444961,
+          "mode": "list",
+          "cachedResultName": "product_catalog.csv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit#gid=642444961"
+        },
+        "options": {}
+      },
+      "id": "eaa763f3-f7c5-44fe-87cc-6e931f313a6e",
+      "name": "Read Catalog (Recommender)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        352
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Lightweight retrieval: keyword match on category/product_interest + budget filter.\n// In production this is a vector-similarity lookup (see Technical Design Doc §4);\n// this deterministic version keeps the reference build runnable without a vector DB.\nconst rows = $input.all().map(i => i.json);\nconst lead = $('Parse Qualifier Output').first().json;\nconst budget = lead.per_unit_budget || lead.budget_total || null;\nconst interest = (lead.product_interest || lead.category_hint || '').toLowerCase();\n\nconst scored = rows.map(r => {\n  const hay = `${r.name} ${r.category} ${r.description}`.toLowerCase();\n  let score = 0;\n  interest.split(/\\W+/).forEach(w => { if (w.length > 2 && hay.includes(w)) score += 2; });\n  const price = parseFloat(r.price);\n  const withinBudget = budget ? price <= Number(budget) : true;\n  return { ...r, _score: score, _within_budget: withinBudget };\n}).filter(r => r._within_budget)\n  .sort((a,b) => b._score - a._score)\n  .slice(0, 5);\n\nreturn [{ json: { ...lead, catalog_context: JSON.stringify(scored), catalog_sku_list: scored.map(s => s.name) } }];\n"
+      },
+      "id": "14d6ab3a-528d-4312-a606-5753835fbe00",
+      "name": "Retrieve & Rank Catalog Matches (RAG-lite)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 600, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Product Recommender agent. You may ONLY reference products, prices,\\ndescriptions, and availability that appear in the CATALOG_CONTEXT provided in the user message. This is the complete\\nand only source of truth for products — never use general knowledge of furniture brands or invent anything.\\n\\nRules:\\n1. If no catalog row matches the customer\\'s requirements and budget, say so explicitly (recommendations: []) instead of suggesting something close.\\n2. Never state a price, dimension, or feature that is not present verbatim in a matched catalog row.\\n3. Never claim a product is in stock unless the catalog \"availability\" field says so.\\n4. Cite the catalog row (sku or name, exactly as given) for every recommendation.\\n5. If the customer mentions a competitor, differentiate using ONLY Oak & Ember\\'s own catalog data — never fabricate a claim about the competitor\\'s products.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"recommendations\": [{\"sku_or_name\": string, \"price\": number, \"rationale\": string}],\\n \"no_match_reason\": string|null, \"competitor_differentiators\": string|null}' }, { role: 'user', content: `Lead: ${JSON.stringify($json)}\\n\\nCATALOG_CONTEXT: ${$json.catalog_context}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f310105b-3600-48d5-8197-6beada0a1dfc",
+      "name": "Product Recommender Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        352
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cloud.langfuse.com/api/public/ingestion",
+        "authentication": "predefinedCredentialType",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'product-recommender', input: { lead: $('Retrieve & Rank Catalog Matches (RAG-lite)').first().json, catalog_context: $('Retrieve & Rank Catalog Matches (RAG-lite)').first().json.catalog_context }, output: $json.choices[0].message.content, metadata: { workflow: 'SalesGenie', node: 'Log Trace - Recommender' }, timestamp: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "284192a7-2810-4fdf-a749-8d52ae50f445",
+      "name": "Log Trace - Recommender",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { recommendations: [], no_match_reason: 'parse_error', _parse_error: true }; }\nconst base = $('Retrieve & Rank Catalog Matches (RAG-lite)').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "2cd2eeb6-5312-433c-b818-9a0f731b2e42",
+      "name": "Parse Recommender Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Hard gate: every recommended sku_or_name MUST string-match a row we actually retrieved\n// from the live catalog sheet. This is what makes the \"never invent a product\" rule\n// enforceable rather than just a prompt instruction (Technical Design Doc §3, Layer 3).\nconst item = $input.first().json;\nconst allowed = new Set((item.catalog_sku_list || []).map(s => String(s).toLowerCase().trim()));\nconst recs = item.recommendations || [];\nconst invalid = recs.filter(r => !allowed.has(String(r.sku_or_name).toLowerCase().trim()));\nconst validation_passed = invalid.length === 0;\nreturn [{ json: { ...item, validation_passed, invalid_recommendations: invalid } }];\n"
+      },
+      "id": "8af63087-4a4c-4a64-bb74-38672b1035c2",
+      "name": "Catalog Validator (Deterministic)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.validation_passed}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cf7ad3c4-2ed0-404f-bfcc-43cb50f87f0a",
+      "name": "Validation Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3136,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 500, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Response Drafter agent. Write a short, warm, professional customer-facing\\nemail using ONLY the lead information and recommendations provided — do not add any product, price, or claim not\\npresent in the input. If recommendations is empty, politely ask the clarifying question provided in missing_info_prompt\\ninstead of recommending anything. This draft will be reviewed and approved by a human sales rep before sending —\\nwrite it as a ready-to-send draft, not a summary.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"subject\": string, \"body\": string}' }, { role: 'user', content: JSON.stringify($json) } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "84d0282f-8b1a-4b30-8ea1-c76d5e4ae5c7",
+      "name": "Response Drafter Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        256
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { subject: 'Following up on your inquiry', body: raw, _parse_error: true }; }\nconst base = $('Catalog Validator (Deterministic)').first().json;\nreturn [{ json: { ...base, draft_subject: parsed.subject, draft_body: parsed.body } }];\n"
+      },
+      "id": "7a151507-ec81-4250-b500-444b9d66a4ef",
+      "name": "Parse Drafter Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3584,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Maps the qualified lead into the crm_export_sample.csv-compatible schema (PRD FR-5).\nconst l = $input.first().json;\nreturn [{ json: {\n  lead_id: l.lead_id,\n  customer_name: l.customer_name,\n  customer_email: l.customer_email,\n  product_interest: l.product_interest,\n  budget_total: l.budget_total,\n  per_unit_budget: l.per_unit_budget,\n  urgency: l.urgency,\n  business_context: l.business_context,\n  tier: l.tier,\n  recommended_products: JSON.stringify(l.recommendations || []),\n  mentions_competitor: l.mentions_competitor || false,\n  processed_at: new Date().toISOString(),\n  source: 'salesgenie_email_pipeline',\n}}];\n"
+      },
+      "id": "aad8f9c4-0222-46f5-83c5-c1470e5026f2",
+      "name": "CRM Formatter - Map to Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3808,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_interest",
+              "displayName": "product_interest",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "budget_total",
+              "displayName": "budget_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "per_unit_budget",
+              "displayName": "per_unit_budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "business_context",
+              "displayName": "business_context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_products",
+              "displayName": "recommended_products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mentions_competitor",
+              "displayName": "mentions_competitor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "35d54d7a-947c-4844-ace6-1081e3d3090b",
+      "name": "Append to HITL_Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4032,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 915303454,
+          "mode": "list",
+          "cachedResultName": "CRMLead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=915303454"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "702be173-2efb-49f8-8053-7b7a217ddac9",
+      "name": "Append to Leads (CRM)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4256,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'lead_processed', tier: $json.tier, awaiting_human_approval: true }) }}",
+        "options": {}
+      },
+      "id": "ad86a153-1c2d-4876-b5a7-b2048c9e2809",
+      "name": "Respond - Lead Processed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4480,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1vNHNS3YXPagTRAA6SdjTWtIacmLKzNWLwhLYAh-Qa9o",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Flagged_Hallucinations",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{$json.lead_id}}",
+            "customer_email": "={{$json.customer_email}}",
+            "invalid_recommendations": "={{ JSON.stringify($json.invalid_recommendations) }}",
+            "flagged_at": "={{$now.toISO()}}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "b681b148-640c-413a-b11f-f55a687e7b94",
+      "name": "Flag Hallucination for Review",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3360,
+        448
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'flagged_for_manual_review', reason: 'recommendation_failed_catalog_validation' }) }}",
+        "options": {}
+      },
+      "id": "f51a8aca-e20c-4061-8978-36e37727a8ac",
+      "name": "Respond - Flagged For Review",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3584,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E",
+          "mode": "list",
+          "cachedResultName": "product_catalog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 642444961,
+          "mode": "list",
+          "cachedResultName": "product_catalog.csv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit#gid=642444961"
+        },
+        "options": {}
+      },
+      "id": "e867e5fb-6603-4762-88d0-e06fb5d33abd",
+      "name": "Read Catalog (FAQ)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all().map(i => i.json);\nconst q = ($('Normalize Email Input').first().json.email_body || '').toLowerCase();\nconst scored = rows.map(r => {\n  const hay = `${r.name} ${r.category} ${r.description}`.toLowerCase();\n  let score = 0;\n  q.split(/\\W+/).forEach(w => { if (w.length > 2 && hay.includes(w)) score++; });\n  return { ...r, _score: score };\n}).sort((a,b) => b._score - a._score).slice(0, 5);\nconst base = $('Normalize Email Input').first().json;\nreturn [{ json: { ...base, catalog_context: JSON.stringify(scored) } }];\n"
+      },
+      "id": "8a148eab-6cce-484b-a951-2b63d34619e1",
+      "name": "Retrieve Catalog Context (FAQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 300, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie FAQ agent. Answer the customer\\'s product question using ONLY the catalog rows\\nprovided in CATALOG_CONTEXT. If the answer isn\\'t in the catalog data, say you\\'ll have a rep confirm — never guess.\\nThis is a product question, NOT a sales lead; do not assign a Hot/Warm/Cold tier.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"answer\": string, \"grounded_in_catalog\": true|false}' }, { role: 'user', content: `Question: ${$json.email_body}\\n\\nCATALOG_CONTEXT: ${$json.catalog_context}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "bff5c35c-862d-42eb-88b4-500bb16d9729",
+      "name": "FAQ / RAG Answer Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        -32
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "GNw24R7u1ObdraTN",
+          "name": "OpenAIDipti"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { answer: 'Let me have a rep confirm that for you.', grounded_in_catalog: false }; }\nconst base = $('Retrieve Catalog Context (FAQ)').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "1c03c8e6-efec-4ed9-bd0d-a711d794c859",
+      "name": "Parse FAQ Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'product_question_answered', answer: $json.answer, grounded_in_catalog: $json.grounded_in_catalog }) }}",
+        "options": {}
+      },
+      "id": "d1de6386-1dd2-430f-bda0-56805cabcdc3",
+      "name": "Respond - FAQ Answer",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2016,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1vNHNS3YXPagTRAA6SdjTWtIacmLKzNWLwhLYAh-Qa9o",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Spam_Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "received_at": "={{$json.received_at}}",
+            "sender_email": "={{$json.sender_email}}",
+            "subject": "={{$json.subject}}",
+            "raw_body": "={{$json.email_body}}",
+            "reasoning": "={{$json.reasoning}}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "73ec814a-9ad0-422a-a8ef-f59a46975b84",
+      "name": "Log Spam to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "1nbLIYr6jJHpmi04",
+          "name": "GoogleInnov"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'discarded', reason: 'classified_as_spam' }) }}",
+        "options": {}
+      },
+      "id": "5c961ad1-1f12-4b5f-b2ef-63ebd32da027",
+      "name": "Respond - Spam Discarded",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        160
+      ]
+    }
+  ],
+  "pinData": {
+    "Inbound Email Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "agentic06.app.n8n.cloud",
+            "user-agent": "PostmanRuntime/2.4.3",
+            "content-length": "146",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cache-control": "no-cache",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "52.23.177.192",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "a34d443fdc274315-EWR",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "postman-token": "9a922e8b-7949-4f10-9f83-21dff2dd91af",
+            "x-forwarded-for": "52.23.177.192, 162.158.155.34",
+            "x-forwarded-host": "agentic06.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-117-7b6f78bddb-x8299",
+            "x-is-trusted": "yes",
+            "x-real-ip": "52.23.177.192"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "from": "dipti@org.com",
+            "subject": "Standing desk inquiry",
+            "text": "What are the exact dimensions and weight of the standing desk?"
+          },
+          "webhookUrl": "https://agentic06.app.n8n.cloud/webhook-test/salesgenie-inbound",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Inbound Email Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email Input": {
+      "main": [
+        [
+          {
+            "node": "Router Agent - Classify Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router Agent - Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Log Trace - Router",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Parse Router Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Trace - Router": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Router Output": {
+      "main": [
+        [
+          {
+            "node": "Route By Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route By Type": {
+      "main": [
+        [
+          {
+            "node": "Email Ingestion Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Catalog (FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Spam to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Ingestion Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Ingestion Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ingestion Output": {
+      "main": [
+        [
+          {
+            "node": "Lead Qualifier Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Qualifier Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Qualifier Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Qualifier Output": {
+      "main": [
+        [
+          {
+            "node": "Read Catalog (Recommender)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Catalog (Recommender)": {
+      "main": [
+        [
+          {
+            "node": "Retrieve & Rank Catalog Matches (RAG-lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve & Rank Catalog Matches (RAG-lite)": {
+      "main": [
+        [
+          {
+            "node": "Product Recommender Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product Recommender Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Recommender Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Trace - Recommender": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Recommender Output": {
+      "main": [
+        [
+          {
+            "node": "Catalog Validator (Deterministic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog Validator (Deterministic)": {
+      "main": [
+        [
+          {
+            "node": "Validation Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Passed?": {
+      "main": [
+        [
+          {
+            "node": "Response Drafter Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag Hallucination for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Drafter Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Drafter Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Drafter Output": {
+      "main": [
+        [
+          {
+            "node": "CRM Formatter - Map to Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Formatter - Map to Schema": {
+      "main": [
+        [
+          {
+            "node": "Append to HITL_Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to HITL_Queue": {
+      "main": [
+        [
+          {
+            "node": "Append to Leads (CRM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Leads (CRM)": {
+      "main": [
+        [
+          {
+            "node": "Respond - Lead Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag Hallucination for Review": {
+      "main": [
+        [
+          {
+            "node": "Respond - Flagged For Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Catalog (FAQ)": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Catalog Context (FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Catalog Context (FAQ)": {
+      "main": [
+        [
+          {
+            "node": "FAQ / RAG Answer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAQ / RAG Answer Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse FAQ Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse FAQ Output": {
+      "main": [
+        [
+          {
+            "node": "Respond - FAQ Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Spam to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond - Spam Discarded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c70271a5-ae36-43dc-ba5b-ce41d8f9c4eb",
+  "meta": {
+    "instanceId": "76f1edadfc44187b235ad30dca4f13c2c8477f08431c30d661a49fb889397ef5"
+  },
+  "nodeGroups": [],
+  "id": "fwZhIbAOVOmLTGOE",
+  "tags": []
+}
