@@ -1,0 +1,127 @@
+Microsoft Windows [Version 10.0.26200.9278]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\DIPTI>docker -version
+unknown shorthand flag: 'e' in -ersion
+
+Usage:  docker [OPTIONS] COMMAND [ARG...]
+
+Run 'docker --help' for more information
+
+C:\Users\DIPTI>docker --version
+Docker version 29.6.2, build dfc4efb
+
+C:\Users\DIPTI>cd C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>run.bat
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>###
+'###' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>-- command to download the official pre-built images from Docker Hub and
+'--' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>-- spin up all nine container layers in detached background mode
+'--' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker compose up -d
+time="2026-09-06T19:29:51+05:30" level=warning msg="Found multiple config files with supported names: C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\compose.yaml, C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\docker-compose.yml"
+time="2026-09-06T19:29:51+05:30" level=warning msg="Using C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\compose.yaml"
+[+] up 127/127
+ ✔ Image ollama/ollama:latest                  Pulled                                                             963.0s
+ ✔ Image pgvector/pgvector:pg16                Pulled                                                             146.5s
+ ✔ Image langfuse/langfuse:latest              Pulled                                                             241.5s
+ ✔ Image postgres:16-alpine                    Pulled                                                              98.9s
+ ✔ Image dpage/pgadmin4:latest                 Pulled                                                             165.6s
+ ✔ Image docker.n8n.io/n8nio/n8n:latest        Pulled                                                             605.8s
+ ✔ Image mongo-express:latest                  Pulled                                                              53.2s
+ ✔ Image mongo:latest                          Pulled                                                             148.2s
+ ✔ Network local-setup_ai-network              Created                                                              0.4s
+ ✔ Volume local-setup_standalone_postgres_data Created                                                              0.1s
+ ✔ Volume local-setup_n8n_storage              Created                                                              0.0s
+ ✔ Volume local-setup_standalone_mongo_data    Created                                                              0.0s
+ ✔ Volume local-setup_langflow_storage         Created                                                              0.0s
+ ✔ Volume local-setup_ollama_storage           Created                                                              0.0s
+ ✔ Volume local-setup_langfuse_db_storage      Created                                                              0.0s
+ ✔ Container langfuse-db                       Started                                                              4.7s
+ ✔ Container mongodb                           Started                                                              4.7s
+ ✔ Container ollama                            Started                                                              4.7s
+ ✔ Container postgres-app                      Started                                                              4.8s
+ ✔ Container n8n                               Started                                                              5.8s
+ ✔ Container langflow                          Started                                                              5.4s
+ ✔ Container langfuse                          Started                                                              5.7s
+ ✔ Container mongo-express                     Started                                                              5.6s
+ ✔ Container pgadmin                           Started                                                              5.6s
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>echo "All nine container layers are up and running, cross chcek the status again"
+"All nine container layers are up and running, cross chcek the status again"
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker compose ps
+time="2026-09-06T19:46:17+05:30" level=warning msg="Found multiple config files with supported names: C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\compose.yaml, C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\docker-compose.yml"
+time="2026-09-06T19:46:17+05:30" level=warning msg="Using C:\\2026-InterviewKickStart\\Capstone\\SalesGenie\\ai-powered-sales-genie\\scripts\\local-setup\\compose.yaml"
+NAME            IMAGE                            COMMAND                  SERVICE         CREATED          STATUS         PORTS
+langflow        langflowai/langflow:latest       "langflow run"           langflow        12 seconds ago   Up 6 seconds   0.0.0.0:7860->7860/tcp, [::]:7860->7860/tcp
+langfuse        langfuse/langfuse:latest         "dumb-init -- ./web/…"   langfuse        12 seconds ago   Up 2 seconds   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+langfuse-db     postgres:16-alpine               "docker-entrypoint.s…"   langfuse-db     13 seconds ago   Up 8 seconds   5432/tcp
+mongo-express   mongo-express:latest             "/sbin/tini -- /dock…"   mongo-express   12 seconds ago   Up 6 seconds   0.0.0.0:8081->8081/tcp, [::]:8081->8081/tcp
+mongodb         mongo:latest                     "docker-entrypoint.s…"   mongodb         13 seconds ago   Up 8 seconds   0.0.0.0:27017->27017/tcp, [::]:27017->27017/tcp
+n8n             docker.n8n.io/n8nio/n8n:latest   "tini -- /docker-ent…"   n8n             12 seconds ago   Up 6 seconds   0.0.0.0:5678->5678/tcp, [::]:5678->5678/tcp
+ollama          ollama/ollama:latest             "/bin/ollama serve"      ollama          13 seconds ago   Up 8 seconds   0.0.0.0:11434->11434/tcp, [::]:11434->11434/tcp
+pgadmin         dpage/pgadmin4:latest            "/entrypoint.sh"         pgadmin         12 seconds ago   Up 5 seconds   0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+postgres-app    pgvector/pgvector:pg16           "docker-entrypoint.s…"   postgres-app    13 seconds ago   Up 8 seconds   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>-- The Ollama container installs completely blank.
+'--' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>-- Will explicitly download the models you want to use for generation and vector creation.
+'--' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup># Pull the text embedding model (used in our n8n workflow)
+'#' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker exec -it ollama ollama pull nomic-embed-text
+pulling manifest
+pulling 970aa74c0a90: 100% ▕█████████████████████████████████████████████████████████ ▏ 274 MB/274 MB  7.4 MB/s      0s
+pulling 31df23ea7daa: 100% ▕██████████████████████████████████████████████████████████▏  420 B
+verifying sha256 digest
+writing manifest
+success
+
+What's next:
+    Try Docker Debug for seamless, persistent debugging tools in any container or image → docker debug ollama
+    Learn more at https://docs.docker.com/go/debug-cli/
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup># Pull a lightweight LLM for generation/chat tasks
+'#' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker exec -it ollama ollama pull llama3.2
+pulling manifest
+pulling dde5aa3fc5ff: 100% ▕█████████████████████████████████████████████████████████ ▏ 2.0 GB/2.0 GB   12 MB/s      0s
+verifying sha256 digest
+writing manifest
+success
+
+What's next:
+    Try Docker Debug for seamless, persistent debugging tools in any container or image → docker debug ollama
+    Learn more at https://docs.docker.com/go/debug-cli/
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>#Open your browser and navigate to pgAdmin at http://localhost:5050
+'#Open' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>#Open your browser and navigate to pgAdmin at http://localhost:5050.Log in using admin@local.host and adminpassword.Right-click Servers  General, name it Local App DB.Under Connection, enter the following details and save:Host name/address: postgres-app (This is the internal Docker DNS name)Port: 5432Maintenance database: app_databaseUsername: app_userPassword: app_passwordOnce connected, expand your server, click on app_database, click Tools in the top menu, and select Query Tool.Execute the vector initialization script:sqlCREATE EXTENSION IF NOT EXISTS vector; 1>Server...Under
+'#Open' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>#Use code with caution.Step 7: Access and Use Your StackYour local AI sandbox is completely up and running. You can now visit any panel in your browser:n8n Automation: http://localhost:5678 (Import your JSON workflow here)Langflow Visual Agent Builder: http://localhost:7860Langfuse Observability Panel: http://localhost:3000Mongo Express Dashboard: http://localhost:8081
+'#Use' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>
