@@ -1,0 +1,159 @@
+networks:
+  ai-network:
+    driver: bridge
+
+volumes:
+  ollama_storage:
+  n8n_storage:
+  langflow_storage:
+  langfuse_db_storage:
+  standalone_postgres_data:
+  standalone_mongo_data:
+
+services:
+  # 1. Ollama - Local LLM Engine
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    networks:
+      - ai-network
+    volumes:
+      - ollama_storage:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+
+  # 2. n8n - Workflow Automation
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    networks:
+      - ai-network
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_storage:/home/node/.n8n
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - GENERIC_TIMEZONE=UTC
+    restart: unless-stopped
+    depends_on:
+      - ollama
+
+  # 3. Langflow - Visual Multi-Agent Prototyping
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: langflow
+    networks:
+      - ai-network
+    ports:
+      - "7860:7860"
+    volumes:
+      - langflow_storage:/root/.langflow
+    environment:
+      - LANGFLOW_HOST=0.0.0.0
+      - LANGFLOW_PORT=7860
+    restart: unless-stopped
+    depends_on:
+      - ollama
+
+  # 4. Langfuse Internal DB (Strictly for Tracing Data)
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: langfuse-db
+    networks:
+      - ai-network
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secretpassword
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_db_storage:/var/lib/postgresql/data
+
+  # 5. Langfuse - LLM Observability Console
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: langfuse
+    networks:
+      - ai-network
+    restart: unless-stopped
+    depends_on:
+      - langfuse-db
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:secretpassword@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=changeme_run_openssl_rand_base64_32_to_generate
+      - NEXTAUTH_URL=http://localhost:3000
+      - LANGFUSE_INIT_ORG_NAME=LocalOrg
+      - LANGFUSE_INIT_PROJECT_NAME=LocalProject
+      - LANGFUSE_INIT_USER_EMAIL=admin@local.host
+      - LANGFUSE_INIT_USER_PASSWORD=adminpassword
+
+  # 6. Standalone PostgreSQL Engine with NATIVE pgvector Extension
+  postgres-app:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-app
+    networks:
+      - ai-network
+    restart: unless-stopped
+    ports:
+      - "5433:5432" # Mapped to 5433 on host to avoid local port clashes
+    environment:
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=app_password
+      - POSTGRES_DB=app_database
+    volumes:
+      - standalone_postgres_data:/var/lib/postgresql/data
+
+  # 7. pgAdmin - Visual Dashboard for PostgreSQL Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    networks:
+      - ai-network
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@local.host
+      - PGADMIN_DEFAULT_PASSWORD=adminpassword
+    depends_on:
+      - postgres-app
+
+  # 8. Standalone MongoDB Engine
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    networks:
+      - ai-network
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+    volumes:
+      - standalone_mongo_data:/data/db
+
+  # 9. Mongo Express - Visual Dashboard for MongoDB Management
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    networks:
+      - ai-network
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=rootpassword
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+    depends_on:
+      - mongodb
