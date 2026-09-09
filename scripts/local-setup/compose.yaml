@@ -53,6 +53,8 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
+      - postgres-app
+      - mongodb
 
   # 3. Langflow - Visual Multi-Agent Prototyping
   langflow:
@@ -100,7 +102,7 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:secretpassword@langfuse-db:5432/langfuse
-      - NEXTAUTH_SECRET=changeme_run_openssl_rand_base64_32_to_generate
+      - NEXTAUTH_SECRET=change_me #_run_openssl_rand_base64_32_to_generate
       - NEXTAUTH_URL=http://localhost:3000
       - LANGFUSE_INIT_ORG_NAME=LocalOrg
       - LANGFUSE_INIT_PROJECT_NAME=LocalProject
@@ -152,8 +154,10 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+      - MONGO_INITDB_DATABASE= operations_log
     volumes:
       - standalone_mongo_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
     # Performance tweak for memory management in development
     command: --wiredTigerCacheSizeGB 1
 
