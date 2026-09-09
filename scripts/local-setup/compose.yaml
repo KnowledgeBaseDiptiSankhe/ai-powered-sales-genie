@@ -11,10 +11,11 @@ volumes:
   standalone_mongo_data:
 
 services:
-  # 1. Ollama - Local LLM Engine
+  # 1. Ollama - Local LLM Engine (PERFORMANCE OPTIMIZED)
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
+    runtime: nvidia  # <--- THIS IS HOW YOU MAP THE RUNTIME IN COMPOSE
     networks:
       - ai-network
     volumes:
@@ -23,6 +24,15 @@ services:
       - "11434:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=-1  # Keeps models permanently in memory to eliminate loading lag
+      - OLLAMA_NUM_PARALLEL=4 # Enables parallel request processing if multiple apps call it
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu] # Exposes your GPU directly to Ollama for 10x faster generation
     restart: unless-stopped
 
   # 2. n8n - Workflow Automation
@@ -74,6 +84,8 @@ services:
       - POSTGRES_DB=langfuse
     volumes:
       - langfuse_db_storage:/var/lib/postgresql/data
+    # Performance tweaks for Postgres write-heavy tracing loads
+    command: postgres -c shared_buffers=512MB -c synchronous_commit=off
 
   # 5. Langfuse - LLM Observability Console
   langfuse:
@@ -103,13 +115,15 @@ services:
       - ai-network
     restart: unless-stopped
     ports:
-      - "5433:5432" # Mapped to 5433 on host to avoid local port clashes
+      - "5433:5432"
     environment:
       - POSTGRES_USER=app_user
       - POSTGRES_PASSWORD=app_password
       - POSTGRES_DB=app_database
     volumes:
       - standalone_postgres_data:/var/lib/postgresql/data
+    # Performance tweaks for vector searches & caching
+    command: postgres -c shared_buffers=1GB -c work_mem=64MB
 
   # 7. pgAdmin - Visual Dashboard for PostgreSQL Management
   pgadmin:
@@ -140,6 +154,8 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=rootpassword
     volumes:
       - standalone_mongo_data:/data/db
+    # Performance tweak for memory management in development
+    command: --wiredTigerCacheSizeGB 1
 
   # 9. Mongo Express - Visual Dashboard for MongoDB Management
   mongo-express:
