@@ -1,0 +1,14 @@
+Analyze this complaint.
+
+Complaint ID: {{$json.complaint_id}}
+Customer: {{$json.customer_name}}
+Email: {{$json.customer_email}}
+Subject: {{$json.subject}}
+Order ID: {{$json.order_id}}
+Purchase Amount: {{$json.purchase_amount}}
+
+Complaint:
+{{$json.complaint_text}}
+
+Additional information:
+{{$json.additional_information}}

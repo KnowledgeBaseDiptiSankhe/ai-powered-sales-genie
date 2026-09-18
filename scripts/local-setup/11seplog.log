@@ -1,0 +1,25 @@
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker compose up -d 
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>echo "All nine container layers are up and running, cross chcek the status again" 
+"All nine container layers are up and running, cross chcek the status again"
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker compose ps 
+NAME            IMAGE                            COMMAND                  SERVICE         CREATED          STATUS                  PORTS
+langflow        langflowai/langflow:latest       "langflow run"           langflow        3 days ago       Up 1 second             0.0.0.0:7860->7860/tcp, [::]:7860->7860/tcp
+langfuse        langfuse/langfuse:latest         "dumb-init -- ./web/…"   langfuse        12 seconds ago   Up Less than a second   3000/tcp
+langfuse-db     postgres:16-alpine               "docker-entrypoint.s…"   langfuse-db     3 days ago       Up 8 seconds            5432/tcp
+mongo-express   mongo-express:latest             "/sbin/tini -- /dock…"   mongo-express   3 days ago       Up 5 seconds            0.0.0.0:8081->8081/tcp, [::]:8081->8081/tcp
+mongodb         mongo:latest                     "docker-entrypoint.s…"   mongodb         12 seconds ago   Up 8 seconds            0.0.0.0:27017->27017/tcp, [::]:27017->27017/tcp
+n8n             docker.n8n.io/n8nio/n8n:latest   "tini -- /docker-ent…"   n8n             11 seconds ago   Up 1 second             0.0.0.0:5678->5678/tcp, [::]:5678->5678/tcp
+ollama          ollama/ollama:latest             "/bin/ollama serve"      ollama          3 days ago       Up 8 seconds            0.0.0.0:11434->11434/tcp, [::]:11434->11434/tcp
+pgadmin         dpage/pgadmin4:latest            "/entrypoint.sh"         pgadmin         3 days ago       Up 5 seconds            0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+postgres-app    pgvector/pgvector:pg16           "docker-entrypoint.s…"   postgres-app    3 days ago       Up 8 seconds            0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker exec -it ollama ollama pull nomic-embed-text 
+]11;?\[6n[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup>docker exec -it ollama ollama pull llama3.2 
+]11;?\[6n[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l[?2026h[?25l[1G[?25h[?2026l
+
+C:\2026-InterviewKickStart\Capstone\SalesGenie\ai-powered-sales-genie\scripts\local-setup># @REM docker run -it  --name n8n \ -p 5678:5678 \ -e N8N_CORS_ALLOWED_ORIGINS="*" \ n8nio/n8n 

@@ -1,0 +1,4011 @@
+{
+  "name": "SalesGenie",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "c22091e7-9e5a-48a9-8aea-2e2da1a64c15",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "58f23174-e91d-4d22-aa5b-59b879a5510e",
+      "name": "Inbound Email Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -4976,
+        1952
+      ],
+      "webhookId": "c22091e7-9e5a-48a9-8aea-2e2da1a64c15"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "84d00340-5e34-40ac-9052-eacbf9dc6e54",
+              "name": "sender_email",
+              "value": "={{ $json.body.from }} {{ $json.body.From }}",
+              "type": "string"
+            },
+            {
+              "id": "1bc772ed-41c3-4397-82ce-d112d18b8fa0",
+              "name": "subject",
+              "value": "={{ $json.body.subject }} {{ $json.body.Subject }}",
+              "type": "string"
+            },
+            {
+              "id": "9244172b-3f60-44d8-ab98-00bb338b7221",
+              "name": "email_body",
+              "value": "={{ $json.body.text }} || {{ $json.body.text }} ",
+              "type": "string"
+            },
+            {
+              "id": "abeda695-60af-495d-8a76-1f6c7b9f7d25",
+              "name": "received_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "e95a8418-d7ab-4a14-a46f-806a6b30b640",
+              "name": "lead_id",
+              "value": "={{ $itemIndex + '-' + Date.now() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aac48eb7-7579-4d11-a996-83f51bd239af",
+      "name": "Normalize Email Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4752,
+        2192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.2\",\n  \"stream\": false,\n  \"format\": \"json\",\n  \"options\": {\n    \"temperature\": 0\n  },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are the SalesGenie Email Router/Dispatcher agent for Oak & Ember Interiors, a furniture business.\\n\\nClassify one inbound email into exactly one route_type:\\nRETAIL_HOT: final price/quote, specific product configuration, immediate availability, ready to purchase, specific near-term purchase.\\nRETAIL_WARM: fabric swatches, finish samples, upcoming sale inquiry, future lead time, purchase planned in coming months, genuine product interest without immediate purchase.\\nRETAIL_COLD: weak purchase intent, outside shipping area, free design/mood board without meaningful purchase intent.\\n\\nBULK_HOT: RFP/RFQ, large quantity, defined commercial project, urgent quotation, hotel/restaurant/office/builder/hospitality requirement, quantity/specifications/deadline indicating immediate opportunity.\\nBULK_WARM: Trade Program inquiry, wholesale catalog, wholesale pricing, MOQ inquiry, reseller inquiry, future commercial project or partnership.\\nBULK_COLD: speculative wholesaler below MOQ, early-stage inquiry with little actionable information, low-value commercial inquiry.\\n\\nGENERIC_PRODUCT_QUERY: urgent supplier/material shortage, production-impacting shipping delay, urgent machinery repair, critical utility/factory issue, urgent operational issue, marketing agency pitches, SaaS pitches, vendor pitches and other legitimate but low-priority unsolicited business communication.\\n\\nGENERIC_FINANCE_ADMIN_HR: vendor invoices, safety/fire inspections, compliance notices, job applications, routine finance/HR/procurement/admin communication.\\n\\nSPAM_INVALID: obvious spam, phishing, suspicious/fraudulent, irrelevant, nonsensical, empty, or clearly non-legitimate emails. For spam_invalid lead_temperature must be null. Competitor mentions do not make an email spam.\\n\\ncustomer_name: a name written in the body/signature; otherwise use the From-Name header if it looks like a real personal name (e.g. first + last name). A bare handle, nickname, or single lowercase word is NOT a name -> null.\\n\\nbudget_value: total numeric budget in the currency mentioned. Convert Indian notation (1 lakh = 100000, 1 crore = 10000000).\\n\\nproduct_interest: short lowercase category words for what they want (e.g. desks, office-chairs, sofas, beds, dining, bookshelves, outdoor).\\n\\nurgency reflects TIME pressure only:\\nhigh = explicit deadline or delivery window within ~a month or urgent wording;\\nmedium = implied near-term need or an event/move without an exact date;\\nlow = no time signal at all.\\n\\nSet mentions_competitor to true or false.\\n\\nconfidence: 0-1, how confident you are in classification AND extraction combined.\\n0.9+ = clear, well-formed, specific email;\\n~0.7 = clear intent but sparse details;\\nBELOW 0.5 = garbled, txt-speak, or too vague to extract anything meaningful.\\n\\nIf the message is garbled or barely intelligible: set EVERY extraction field to null, product_interest to [], and confidence below 0.5. Do not extract urgency or interests from garbled fragments.\\n\\nDo not invent information. Use the strongest explicit evidence in the email.\\n\\nReturn ONLY valid JSON with exactly these keys:\\nroute_type, lead_temperature, mentions_competitor, reasoning, customer_name, budget_value, product_interest, urgency, confidence\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Subject: {{ $json.subject }}\\n\\nBody:\\n{{ $json.email_body }}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 3000
+        }
+      },
+      "id": "4814618b-779b-418c-8d64-40026cb80004",
+      "name": "Router Agent - Classify Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4976,
+        464
+      ],
+      "retryOnFail": false,
+      "maxTries": 2,
+      "notes": "For network glitch or some other issue"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cloud.langfuse.com/api/public/ingestion1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'router-classify', input: $('Normalize Email Input').first().json.email_body, output: $json.choices[0].message.content, metadata: { workflow: 'SalesGenie', node: 'Log Trace - Router' }, timestamp: new Date().toISOString() }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "1a6e13d5-5e6d-4051-8dd0-e81ba2edd83f",
+      "name": "Log Trace - Router",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4752,
+        464
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Normalize Email Input').first().json;\nconst original = $('Ollama - SalesGenie Router1').first().json.message.content;\nlet parsedcontent;\ntry { parsedcontent=JSON.parse(original);} catch (e) { parsed = { route_type: 'spam', mentions_competitor: false, reasoning: 'parse_error', _parse_error: true , lead_temperature:\"not provided\", customer_name:\"not provided\", budget_value: 0, product_interest:\"not provided\", urgency:0, confidence:0}; }\nreturn [{ json: { ...parsedcontent, ...base } }];"
+      },
+      "id": "705c1d3d-39d5-49a1-ad1d-9f0a844a11d4",
+      "name": "Parse Router Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4304,
+        2320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.2\",\n  \"max_completion_tokens\": 400,\n  \"response_format\": {\n    \"type\": \"json_object\"\n  },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are the SalesGenie Email Ingestion agent. Extract structured fields from the inquiry email below.\\nDo NOT invent or assume any field that is not stated or clearly implied by the text. If a field is missing, use null.\\nIf the email mentions a quantity and a total budget (e.g. \\\"10 chairs, budget $5000\\\"), compute per_unit_budget = total_budget / quantity.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\\\"customer_name\\\": string|null, \\\"customer_email\\\": string|null, \\\"product_interest\\\": string|null, \\\"category_hint\\\": string|null,\\n \\\"budget_total\\\": number|null, \\\"quantity\\\": number|null, \\\"per_unit_budget\\\": number|null, \\\"urgency\\\": string|null,\\n \\\"business_context\\\": string|null, \\\"mentions_competitor\\\": true|false, \\\"competitor_name\\\": string|null}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Subject: [Insert Subject Here]\\n\\nBody: [Insert Email Body Here]\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "3890d284-57da-43d5-a1d0-76940a4d9c17",
+      "name": "Email Ingestion Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3632,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { _parse_error: true }; }\nconst base = $('Normalize Email Input').first().json;\nreturn [{ json: { ...base, ...parsed, _ingestion_raw: raw } }];\n"
+      },
+      "id": "0cddc48d-d112-409a-ba56-82f0a257f809",
+      "name": "Parse Ingestion Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3408,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', max_completion_tokens: 300, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Lead Qualifier agent. Classify the lead as Hot, Warm, or Cold using ONLY\\nthese signals from the extracted fields below — do not infer intent beyond what is stated:\\n\\nHot: explicit budget AND specific product/category AND an urgency signal (deadline, \"need by\", bulk quantity with real business context).\\nWarm: specific product/category interest OR budget stated, but not both, and no urgency signal.\\nCold: vague/no product detail AND no budget AND no urgency (e.g. \"I need furniture\").\\n\\nIf budget/product/urgency are missing, do NOT guess or fabricate them; treat as absent and score conservatively.\\nNever let a hot lead be scored as Cold if any two of (budget, product, urgency) are present — when uncertain, prefer the higher tier so a human reviews it.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"tier\": \"Hot|Warm|Cold\", \"reasoning\": \"short reason citing which signals were present or missing\",\\n \"missing_info_prompt\": string|null}' }, { role: 'user', content: JSON.stringify($json) } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "15ba3044-c94f-4f97-9bc1-f86aa36f4cfd",
+      "name": "Lead Qualifier Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3184,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { tier: 'Warm', reasoning: 'parse_error - defaulted to Warm for human review', _parse_error: true }; }\nconst base = $('Parse Ingestion Output').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "7a926092-011d-40f9-a0af-bf7d48a8070f",
+      "name": "Parse Qualifier Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2960,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E",
+          "mode": "list",
+          "cachedResultName": "product_catalog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 642444961,
+          "mode": "list",
+          "cachedResultName": "product_catalog.csv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit#gid=642444961"
+        },
+        "options": {}
+      },
+      "id": "9dce8ae8-5331-4cb3-bf65-c23674ad1403",
+      "name": "Read Catalog (Recommender)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2736,
+        864
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Lightweight retrieval: keyword match on category/product_interest + budget filter.\n// In production this is a vector-similarity lookup (see Technical Design Doc §4);\n// this deterministic version keeps the reference build runnable without a vector DB.\nconst rows = $input.all().map(i => i.json);\nconst lead = $('Parse Qualifier Output').first().json;\nconst budget = lead.per_unit_budget || lead.budget_total || null;\nconst interest = (lead.product_interest || lead.category_hint || '').toLowerCase();\n\nconst scored = rows.map(r => {\n  const hay = `${r.name} ${r.category} ${r.description}`.toLowerCase();\n  let score = 0;\n  interest.split(/\\W+/).forEach(w => { if (w.length > 2 && hay.includes(w)) score += 2; });\n  const price = parseFloat(r.price);\n  const withinBudget = budget ? price <= Number(budget) : true;\n  return { ...r, _score: score, _within_budget: withinBudget };\n}).filter(r => r._within_budget)\n  .sort((a,b) => b._score - a._score)\n  .slice(0, 5);\n\nreturn [{ json: { ...lead, catalog_context: JSON.stringify(scored), catalog_sku_list: scored.map(s => s.name) } }];\n"
+      },
+      "id": "7766e890-b659-43aa-81f9-cc8c4b5700b9",
+      "name": "Retrieve & Rank Catalog Matches (RAG-lite)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2512,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', max_completion_tokens: 600, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Product Recommender agent. You may ONLY reference products, prices,\\ndescriptions, and availability that appear in the CATALOG_CONTEXT provided in the user message. This is the complete\\nand only source of truth for products — never use general knowledge of furniture brands or invent anything.\\n\\nRules:\\n1. If no catalog row matches the customer\\'s requirements and budget, say so explicitly (recommendations: []) instead of suggesting something close.\\n2. Never state a price, dimension, or feature that is not present verbatim in a matched catalog row.\\n3. Never claim a product is in stock unless the catalog \"availability\" field says so.\\n4. Cite the catalog row (sku or name, exactly as given) for every recommendation.\\n5. If the customer mentions a competitor, differentiate using ONLY Oak & Ember\\'s own catalog data — never fabricate a claim about the competitor\\'s products.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"recommendations\": [{\"sku_or_name\": string, \"price\": number, \"rationale\": string}],\\n \"no_match_reason\": string|null, \"competitor_differentiators\": string|null}' }, { role: 'user', content: `Lead: ${JSON.stringify($json)}\\n\\nCATALOG_CONTEXT: ${$json.catalog_context}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d7d63299-9e42-4795-b779-6dc87a18e32a",
+      "name": "Product Recommender Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2288,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { recommendations: [], no_match_reason: 'parse_error', _parse_error: true }; }\nconst base = $('Retrieve & Rank Catalog Matches (RAG-lite)').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "2329daa3-f33d-4fd7-8c8a-b10cbe3c3470",
+      "name": "Parse Recommender Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2064,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Hard gate: every recommended sku_or_name MUST string-match a row we actually retrieved\n// from the live catalog sheet. This is what makes the \"never invent a product\" rule\n// enforceable rather than just a prompt instruction (Technical Design Doc §3, Layer 3).\nconst item = $input.first().json;\nconst allowed = new Set((item.catalog_sku_list || []).map(s => String(s).toLowerCase().trim()));\nconst recs = item.recommendations || [];\nconst invalid = recs.filter(r => !allowed.has(String(r.sku_or_name).toLowerCase().trim()));\nconst validation_passed = invalid.length === 0;\nreturn [{ json: { ...item, validation_passed, invalid_recommendations: invalid } }];\n"
+      },
+      "id": "cccfabbd-6a7c-4071-b580-00ee59d3608b",
+      "name": "Catalog Validator (Deterministic)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1840,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.validation_passed}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "7951efe5-5e47-41eb-80cd-a7bf6464642f"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "23b15f5a-e4a8-4e5e-9c85-da8ed97d3381",
+      "name": "Validation Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1616,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', max_completion_tokens: 500, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie Response Drafter agent. Write a short, warm, professional customer-facing\\nemail using ONLY the lead information and recommendations provided — do not add any product, price, or claim not\\npresent in the input. If recommendations is empty, politely ask the clarifying question provided in missing_info_prompt\\ninstead of recommending anything. This draft will be reviewed and approved by a human sales rep before sending —\\nwrite it as a ready-to-send draft, not a summary.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"subject\": string, \"body\": string}' }, { role: 'user', content: JSON.stringify($json) } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2828effd-494e-43b0-9be7-a2d4c648c8aa",
+      "name": "Response Drafter Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1392,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { subject: 'Following up on your inquiry', body: raw, _parse_error: true }; }\nconst base = $('Catalog Validator (Deterministic)').first().json;\nreturn [{ json: { ...base, draft_subject: parsed.subject, draft_body: parsed.body } }];\n"
+      },
+      "id": "f68a2499-83bd-463f-808b-29cc336997d1",
+      "name": "Parse Drafter Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Maps the qualified lead into the crm_export_sample.csv-compatible schema (PRD FR-5).\nconst l = $input.first().json;\nreturn [{ json: {\n  lead_id: l.lead_id,\n  customer_name: l.customer_name,\n  customer_email: l.customer_email,\n  product_interest: l.product_interest,\n  budget_total: l.budget_total,\n  per_unit_budget: l.per_unit_budget,\n  urgency: l.urgency,\n  business_context: l.business_context,\n  tier: l.tier,\n  recommended_products: JSON.stringify(l.recommendations || []),\n  mentions_competitor: l.mentions_competitor || false,\n  processed_at: new Date().toISOString(),\n  source: 'salesgenie_email_pipeline',\n}}];\n"
+      },
+      "id": "b5bce082-5de3-4845-81a6-6762b306503b",
+      "name": "CRM Formatter - Map to Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "HITL",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_interest",
+              "displayName": "product_interest",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "budget_total",
+              "displayName": "budget_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "per_unit_budget",
+              "displayName": "per_unit_budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "business_context",
+              "displayName": "business_context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_products",
+              "displayName": "recommended_products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mentions_competitor",
+              "displayName": "mentions_competitor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9a2bb5c0-b04e-48f8-8dd1-b4bdaddd6648",
+      "name": "Append to HITL_Queue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -720,
+        688
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 915303454,
+          "mode": "list",
+          "cachedResultName": "CRMLead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=915303454"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_interest",
+              "displayName": "product_interest",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "budget_total",
+              "displayName": "budget_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "per_unit_budget",
+              "displayName": "per_unit_budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "business_context",
+              "displayName": "business_context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_products",
+              "displayName": "recommended_products",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mentions_competitor",
+              "displayName": "mentions_competitor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "324e50b5-ee33-46cc-aafc-a824cca7dc08",
+      "name": "Append to Leads (CRM)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -496,
+        688
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'lead_processed', tier: $json.tier, awaiting_human_approval: true }) }}",
+        "options": {}
+      },
+      "id": "87b2413b-8c2a-4a7a-a79b-58e4143a5a08",
+      "name": "Respond - Lead Processed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -272,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1vNHNS3YXPagTRAA6SdjTWtIacmLKzNWLwhLYAh-Qa9o",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Flagged_Hallucinations",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{$json.lead_id}}",
+            "customer_email": "={{$json.customer_email}}",
+            "invalid_recommendations": "={{ JSON.stringify($json.invalid_recommendations) }}",
+            "flagged_at": "={{$now.toISO()}}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "e5602569-3d06-48d9-94f6-8e0be3e712bb",
+      "name": "Flag Hallucination for Review",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1392,
+        880
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'flagged_for_manual_review', reason: 'recommendation_failed_catalog_validation' }) }}",
+        "options": {}
+      },
+      "id": "a932e276-8b99-4ae9-ac47-e1972f4e1439",
+      "name": "Respond - Flagged For Review",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1168,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E",
+          "mode": "list",
+          "cachedResultName": "product_catalog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 642444961,
+          "mode": "list",
+          "cachedResultName": "product_catalog.csv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aZFIFs5X41DJmbR1oFz_3EyWk6giX4rbpm0SsgJar0E/edit#gid=642444961"
+        },
+        "options": {}
+      },
+      "id": "1e4704d4-9032-4dff-b248-677ba7117813",
+      "name": "Read Catalog (FAQ)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -3856,
+        2336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all().map(i => i.json);\nconst q = ($('Normalize Email Input').first().json.email_body || '').toLowerCase();\nconst scored = rows.map(r => {\n  const hay = `${r.name} ${r.category} ${r.description}`.toLowerCase();\n  let score = 0;\n  q.split(/\\W+/).forEach(w => { if (w.length > 2 && hay.includes(w)) score++; });\n  return { ...r, _score: score };\n}).sort((a,b) => b._score - a._score).slice(0, 5);\nconst base = $('Normalize Email Input').first().json;\nreturn [{ json: { ...base, catalog_context: JSON.stringify(scored) } }];\n"
+      },
+      "id": "50902cdb-4c53-4bd4-8365-11f073c3f68e",
+      "name": "Retrieve Catalog Context (FAQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3632,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'gpt-5.6-terra', max_completion_tokens: 300, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: 'You are the SalesGenie FAQ agent. Answer the customer\\'s product question using ONLY the catalog rows\\nprovided in CATALOG_CONTEXT. If the answer isn\\'t in the catalog data, say you\\'ll have a rep confirm — never guess.\\nThis is a product question, NOT a sales lead; do not assign a Hot/Warm/Cold tier.\\n\\nRespond with ONLY minified JSON, no prose, no markdown fences:\\n{\"answer\": string, \"grounded_in_catalog\": true|false}' }, { role: 'user', content: `Question: ${$json.email_body}\\n\\nCATALOG_CONTEXT: ${$json.catalog_context}` } ] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "89d08894-a828-499d-ad7a-0681f5efbd92",
+      "name": "FAQ / RAG Answer Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3408,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.first().json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(raw); } catch (e) { parsed = { answer: 'Let me have a rep confirm that for you.', grounded_in_catalog: false }; }\nconst base = $('Retrieve Catalog Context (FAQ)').first().json;\nreturn [{ json: { ...base, ...parsed } }];\n"
+      },
+      "id": "dc2ac717-7806-4d84-92d6-e03e732c649f",
+      "name": "Parse FAQ Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3184,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'product_question_answered', answer: $json.answer, grounded_in_catalog: $json.grounded_in_catalog }) }}",
+        "options": {}
+      },
+      "id": "edd8b48c-9060-44a0-9529-a9e257ed3734",
+      "name": "Respond - FAQ Answer",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -2960,
+        2336
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "784767e5-edda-457c-a887-bc82ff6997c6",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4976,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \n  \"model\": \"llama3.2\", \n  \"stream\": false, \n  \"format\": \"json\", \n  \"options\": { \"temperature\": 0 }, \n  \"messages\": [ \n    { \n      \"role\": \"system\", \n      \"content\": \"you are the salesgenie email router/dispatcher agent for oak & ember interiors, a furniture business.\\n\\nclassify one inbound email into exactly one route_type:\\ncomplaint:sender expresses dissatisfaction, frustration, anger, or disappointment regarding a product, service, delay, billing issue, error, or poor experience, and is seeking a resolution, refund, or apology.\\nretail_hot: final price/quote, specific product configuration, immediate availability, ready to purchase, specific near-term purchase.\\nretail_warm: fabric swatches, finish samples, upcoming sale inquiry, future lead time, purchase planned in coming months, genuine product interest without immediate purchase.\\nretail_cold: weak purchase intent, outside shipping area, free design/mood board without meaningful purchase intent.\\n\\nbulk_hot: rfp/rfq, large quantity, defined commercial project, urgent quotation, hotel/restaurant/office/builder/hospitality requirement, quantity/specifications/deadline indicating immediate opportunity.\\nbulk_warm: trade program inquiry, wholesale catalog, wholesale pricing, moq inquiry, reseller inquiry, future commercial project or partnership.\\nbulk_cold: speculative wholesaler below moq, early-stage inquiry with little actionable information, low-value commercial inquiry.\\n\\ngeneric_product_query: urgent supplier/material shortage, production-impacting shipping delay, urgent machinery repair, critical utility/factory issue, urgent operational issue, marketing agency pitches, saas pitches, vendor pitches and other legitimate but low-priority unsolicited business communication.\\n\\ngeneric_finance_admin_hr: vendor invoices, safety/fire inspections, compliance notices, job applications, routine finance/hr/procurement/admin communication.\\n\\nspam_invalid: obvious spam, phishing, suspicious/fraudulent, irrelevant, nonsensical, empty, or clearly non-legitimate emails. for spam_invalid lead_temperature must be 'not provided'. competitor mentions do not make an email spam.\\n\\ncustomer_name: a name written in the body/signature; otherwise use the from-name header if it looks like a real personal name (e.g. first + last name). a bare handle, nickname, or single lowercase word is not a name -> 'not provided'.\\n\\nbudget_value: total numeric budget in the currency mentioned. convert indian notation (1 lakh = 100000, 1 crore = 10000000).\\n\\nproduct_interest: short lowercase category words for what they want (e.g. desks, office-chairs, sofas, beds, dining, bookshelves, outdoor).\\n\\nurgency reflects time pressure only:\\nhigh = explicit deadline or delivery window within ~a month or urgent wording;\\nmedium = implied near-term need or an event/move without an exact date;\\nlow = no time signal at all.\\n\\nset mentions_competitor to true or false.\\n\\nconfidence: 0-1, how confident you are in classification and extraction combined.\\n0.9+ = clear, well-formed, specific email;\\n~0.7 = clear intent but sparse details;\\nbelow 0.5 = garbled, txt-speak, or too vague to extract anything meaningful.\\n\\nif the message is garbled or barely intelligible: set every extraction field to 'not provided', product_interest to [], and confidence below 0.5. do not extract urgency or interests from garbled fragments.\\n\\ndo not invent information. use the strongest explicit evidence in the email.\\n\\nreturn only valid json with exactly these keys:\\nroute_type, lead_temperature, mentions_competitor, reasoning, customer_name, budget_value, product_interest, urgency, confidence\" \n    }, \n    { \n      \"role\": \"user\", \n      \"content\": {{ JSON.stringify(\"subject: \" + $json.subject + \"\\n\\nbody:\\n\" + $json.email_body) }}\n    } \n  ] \n}\n",
+        "options": {}
+      },
+      "id": "d70099b6-b361-435f-b8be-344188d9b9b7",
+      "name": "Ollama - SalesGenie Router1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4528,
+        2320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json.body ?? $json;\nconst lead = {\n  external_lead_id: b.external_lead_id ?? b.lead_id ?? `lead_${Date.now()}`,\n  name: b.name ?? b.customer_name ?? '',\n  email: b.email ?? '',\n  phone: b.phone ?? '',\n  company: b.company ?? '',\n  city: b.city ?? '',\n  product: b.product ?? b.model ?? '',\n  quantity: Number(b.quantity ?? 1),\n  deal_type: (b.deal_type ?? (Number(b.quantity ?? 1) > 1 ? 'bulk' : 'retail')).toLowerCase(),\n  source: b.source ?? 'api',\n  message: b.message ?? b.notes ?? '',\n  created_at: b.created_at ?? new Date().toISOString()\n};\nreturn [{json: lead}];"
+      },
+      "id": "f856817e-ca9a-4681-afb0-82407d49f9c7",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3632,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads\n(external_lead_id,name,email,phone,company,city,product,quantity,deal_type,source,message,status,created_at,updated_at)\nVALUES\n($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'received',$12,NOW())\nON CONFLICT (external_lead_id)\nDO UPDATE SET updated_at=NOW(), message=EXCLUDED.message, quantity=EXCLUDED.quantity\nRETURNING id, external_lead_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.external_lead_id,$json.name,$json.email,$json.phone,$json.company,$json.city,$json.product,$json.quantity,$json.deal_type,$json.source,$json.message,$json.created_at] }}"
+        }
+      },
+      "id": "a3390d1d-f56e-421f-9603-444ae70b3e09",
+      "name": "Postgres - Save Lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3408,
+        1504
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {model: $env.OLLAMA_MODEL || 'llama3.2:3b', stream: false, format: 'json', prompt: 'Classify this dealer lead. Return JSON only with keys: temperature (hot|warm|cold), deal_type (retail|bulk), intent_score (0-100), purchase_timeline (immediate|0-30d|31-90d|90d+|unknown), recommended_action, reason. Lead: ' + JSON.stringify({name:$json.name,company:$json.company,product:$json.product,quantity:$json.quantity,deal_type:$json.deal_type,message:$json.message,source:$json.source})} }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "2a168924-3aeb-4e83-b57b-c89394b421db",
+      "name": "Ollama - Score & Classify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3184,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads\nSET temperature=$1, deal_type=$2, intent_score=$3, purchase_timeline=$4,\n    recommended_action=$5, ai_reason=$6, status='qualified', updated_at=NOW()\nWHERE external_lead_id=$7\nRETURNING id, external_lead_id, temperature, deal_type, intent_score;",
+        "options": {
+          "queryReplacement": "={{ [$json.temperature,$json.deal_type,$json.intent_score,$json.purchase_timeline,$json.recommended_action,$json.ai_reason,$json.external_lead_id] }}"
+        }
+      },
+      "id": "b9412695-f62d-4b19-b4d1-c846d82927ac",
+      "name": "Postgres - Save AI Qualification",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2736,
+        1408
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CRM_BASE_URL + '/leads' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CRM_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {external_lead_id:$('Parse AI Result1').first().json.external_lead_id, name:$('Parse AI Result1').first().json.name, email:$('Parse AI Result1').first().json.email, phone:$('Parse AI Result1').first().json.phone, company:$('Parse AI Result1').first().json.company, product:$('Parse AI Result1').first().json.product, quantity:$('Parse AI Result1').first().json.quantity, deal_type:$('Parse AI Result1').first().json.deal_type, temperature:$('Parse AI Result1').first().json.temperature, intent_score:$('Parse AI Result1').first().json.intent_score, recommended_action:$('Parse AI Result1').first().json.recommended_action, source:$('Parse AI Result1').first().json.source} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "67f5dacb-eeb2-4ee6-953f-556f2061c981",
+      "name": "CRM - Create/Update Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2064,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse AI Result1').first().json.email }}",
+        "subject": "={{ $('Parse AI Result1').first().json.temperature === 'hot' ? 'Priority follow-up from our team' : 'Thank you for your enquiry' }}",
+        "emailType": "text",
+        "message": "={{ 'Hello ' + ($('Parse AI Result1').first().json.name || 'there') + ',\\n\\nThank you for your enquiry about ' + ($('Parse AI Result1').first().json.product || 'our products') + '. Our dealer team will contact you shortly.\\n\\nRegards,\\nSales Team' }}",
+        "options": {}
+      },
+      "id": "2f6a6a73-4c23-42e1-9398-a623cefd9081",
+      "name": "Gmail - Customer Acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1840,
+        1152
+      ],
+      "webhookId": "61b1f20f-1896-41d9-944d-6f41cc2d97f7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LANGFUSE_BASE_URL + '/api/public/ingestion' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Basic ' + $env.LANGFUSE_BASIC_AUTH }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {batch:[{id:'lead-'+$('Parse AI Result1').first().json.external_lead_id+'-'+Date.now(),type:'generation-create',timestamp:new Date().toISOString(),body:{traceId:'lead-'+$('Parse AI Result1').first().json.external_lead_id,name:'lead-classification',model:$env.OLLAMA_MODEL || 'llama3.2:3b,input:{product:$('Parse AI Result1').first().json.product,quantity:$('Parse AI Result1').first().json.quantity,message:$('Parse AI Result1').first().json.message},output:{temperature:$('Parse AI Result1').first().json.temperature,intent_score:$('Parse AI Result1').first().json.intent_score,deal_type:$('Parse AI Result1').first().json.deal_type}}}}]} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "fd049e54-52e7-4644-a74b-5fc280bd6589",
+      "name": "Langfuse - AI Trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1840,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "GOOGLE_SHEET_ID",
+        "sheetName": "Leads",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "external_lead_id": "={{ $('Parse AI Result1').first().json.external_lead_id }}",
+            "name": "={{ $('Parse AI Result1').first().json.name }}",
+            "email": "={{ $('Parse AI Result1').first().json.email }}",
+            "phone": "={{ $('Parse AI Result1').first().json.phone }}",
+            "company": "={{ $('Parse AI Result1').first().json.company }}",
+            "product": "={{ $('Parse AI Result1').first().json.product }}",
+            "quantity": "={{ $('Parse AI Result1').first().json.quantity }}",
+            "deal_type": "={{ $('Parse AI Result1').first().json.deal_type }}",
+            "temperature": "={{ $('Parse AI Result1').first().json.temperature }}",
+            "intent_score": "={{ $('Parse AI Result1').first().json.intent_score }}",
+            "purchase_timeline": "={{ $('Parse AI Result1').first().json.purchase_timeline }}",
+            "recommended_action": "={{ $('Parse AI Result1').first().json.recommended_action }}",
+            "source": "={{ $('Parse AI Result1').first().json.source }}",
+            "created_at": "={{ $('Parse AI Result1').first().json.created_at }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "80376799-1fe6-4cf5-9d55-5430939bf3da",
+      "name": "Google Sheets - Lead Register",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1840,
+        1696
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO lead_transactions\n(lead_external_id, transaction_type, deal_type, temperature, quantity, metadata, created_at)\nVALUES ($1,'lead_qualified',$2,$3,$4,$5::jsonb,NOW());",
+        "options": {
+          "queryReplacement": "={{ [$('Parse AI Result1').first().json.external_lead_id,$('Parse AI Result1').first().json.deal_type,$('Parse AI Result1').first().json.temperature,$('Parse AI Result1').first().json.quantity,JSON.stringify({intent_score:$('Parse AI Result1').first().json.intent_score,purchase_timeline:$('Parse AI Result1').first().json.purchase_timeline,recommended_action:$('Parse AI Result1').first().json.recommended_action})] }}"
+        }
+      },
+      "id": "f93330b5-f924-4d3b-b88c-2efaa19eae27",
+      "name": "Postgres - Transaction Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1616,
+        1504
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {status:'accepted', lead_id:$('Parse AI Result1').first().json.external_lead_id, temperature:$('Parse AI Result1').first().json.temperature, deal_type:$('Parse AI Result1').first().json.deal_type, intent_score:$('Parse AI Result1').first().json.intent_score} }}",
+        "options": {}
+      },
+      "id": "8ed722aa-7321-4076-8295-12a694f010b4",
+      "name": "API Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -1392,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Normalize Lead').first().json;\nlet raw = $json.response ?? $json.body ?? $json;\nif (typeof raw === 'string') raw = JSON.parse(raw);\nconst c = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst result = {\n  ...base,\n  temperature: String(c.temperature ?? 'warm').toLowerCase(),\n  deal_type: String(c.deal_type ?? base.deal_type).toLowerCase(),\n  intent_score: Number(c.intent_score ?? 50),\n  purchase_timeline: c.purchase_timeline ?? 'unknown',\n  recommended_action: c.recommended_action ?? 'Contact customer and qualify requirement',\n  ai_reason: c.reason ?? ''\n};\nreturn [{json: result}];"
+      },
+      "id": "ae4426f7-e188-49da-831c-28ab9f44cdf9",
+      "name": "Parse AI Result1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2960,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.4,
+      "position": [
+        -3184,
+        1600
+      ],
+      "id": "61f69125-8dce-4d99-8dda-9e38d328934a",
+      "name": "Insert documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ROUTE_CONFIG = {\n  retail_hot: {\n    segment: 'retail',\n    temperature: 'hot',\n    priority: 1,\n    sla_hours: 2,\n    handler: 'RETAIL',\n    sales_followup: true,\n    quotation_generation: false\n  },\n\n  retail_warm: {\n    segment: 'retail',\n    temperature: 'warm',\n    priority: 2,\n    sla_hours: 24,\n    handler: 'RETAIL',\n    sales_followup: true,\n    quotation_generation: false\n  },\n\n  retail_cold: {\n    segment: 'retail',\n    temperature: 'cold',\n    priority: 3,\n    sla_hours: 72,\n    handler: 'RETAIL',\n    sales_followup: false,\n    quotation_generation: false\n  },\n\n  bulk_hot: {\n    segment: 'bulk',\n    temperature: 'hot',\n    priority: 1,\n    sla_hours: 2,\n    handler: 'BULK',\n    sales_followup: true,\n    quotation_generation: true\n  },\n\n  bulk_warm: {\n    segment: 'bulk',\n    temperature: 'warm',\n    priority: 2,\n    sla_hours: 24,\n    handler: 'BULK',\n    sales_followup: true,\n    quotation_generation: true\n  },\n\n  bulk_cold: {\n    segment: 'bulk',\n    temperature: 'cold',\n    priority: 3,\n    sla_hours: 72,\n    handler: 'BULK',\n    sales_followup: false,\n    quotation_generation: false\n  },\n\n  generic_product_query: {\n    segment: 'generic',\n    temperature: null,\n    priority: 3,\n    sla_hours: 48,\n    handler: 'PRODUCT',\n    sales_followup: false,\n    quotation_generation: false\n  },\n\n  generic_finance_admin_hr: {\n    segment: 'generic',\n    temperature: null,\n    priority: 3,\n    sla_hours: 48,\n    handler: 'OPERATIONS',\n    sales_followup: false,\n    quotation_generation: false\n  },\n\n  spam_invalid: {\n    segment: 'non_business',\n    temperature: null,\n    priority: 3,\n    sla_hours: null,\n    handler: 'QUARANTINE',\n    sales_followup: false,\n    quotation_generation: false\n  },\n\n  complaint: {\n    segment: 'service',\n    temperature: null,\n    priority: 1,\n    sla_hours: 4,\n    handler: 'SUPPORT',\n    sales_followup: false,\n    quotation_generation: false\n  }\n};"
+      },
+      "id": "728db562-a26b-4478-88a7-55946cab5a57",
+      "name": "Apply ROUTE_CONFIG1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4304,
+        2560
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "=innovativediptisankhe@gmail.com",
+        "subject": "[SalesGenie] Corporate Administrative",
+        "emailType": "text",
+        "message": "Dear HR, Finance, Admin Team\n\nWe have received a generic query. Someone from your team will review the matter and connect with you shortly.\n\nCustomer: {{$json.customer_email}}\nSubject: {{$json.subject}}\n\n{{$('Normalize Email Input').first().json}}\n\n\nRegards,\nSalesGenie Team",
+        "options": {}
+      },
+      "id": "5d636b4d-b2ce-41b2-ab96-467d5d91c5fc",
+      "name": "Corporate Administrative Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -3856,
+        2528
+      ],
+      "webhookId": "c3b71ca5-8fcf-49e3-8aa5-0bc0f8d7a500",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Attach Gmail credential."
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route_type }}",
+                    "rightValue": "retail_hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "002acf86-337f-46dc-9251-febb6aafc1b1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route_type }}",
+                    "rightValue": "retail_warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b1e6cda7-13a3-42ac-b5be-69679fb4c3d0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route_type }}",
+                    "rightValue": "retail_cold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "67a2f48c-9c25-44db-9f88-be7dc0c06823"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "ad8cb3a8-2257-48a0-98f3-13ce679ebf9a",
+      "name": "Retail Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -3856,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.handler }}",
+                    "rightValue": "hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "002acf86-337f-46dc-9251-febb6aafc1b1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.handler }}",
+                    "rightValue": "warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b1e6cda7-13a3-42ac-b5be-69679fb4c3d0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.handler }}",
+                    "rightValue": "cold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "67a2f48c-9c25-44db-9f88-be7dc0c06823"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "ROUTING_ERROR"
+        }
+      },
+      "id": "c9fe3fe4-020f-40ff-8d6a-5a242ee21892",
+      "name": "Bulk Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -3856,
+        1952
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "SalesGenie - Human Lead Review",
+        "formDescription": "Review and confirm the customer information before SalesGenie processes the lead.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Customer Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Product Interest",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Budget Value",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Urgency",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "LOW"
+                  },
+                  {
+                    "option": "MEDIUM"
+                  },
+                  {
+                    "option": "HIGH"
+                  },
+                  {
+                    "option": "CRITICAL"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Quantity",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Delivery Location",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Expected Delivery Date",
+              "fieldType": "date",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Pricing Requirement",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Mentions Competitor",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "YES"
+                  },
+                  {
+                    "option": "NO"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Submit Review"
+        }
+      },
+      "id": "2fea8b4b-0a1b-4e32-9f3c-54ce074cbba8",
+      "name": "SalesGenie Human Review Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -4976,
+        2144
+      ],
+      "webhookId": "31c58f32-caaa-43ff-b36a-610cf9e605d6",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -4976,
+        2336
+      ],
+      "id": "42bf2ad6-e070-4f1f-9aa3-6b58368ae6c5",
+      "name": "When chat message received",
+      "webhookId": "490c1e73-6dc1-437d-b996-8f2457477d31"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.route_type }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "regex",
+              "value2": "^(retail_hot|retail_warm|retail_cold)$",
+              "outputKey": "retail deal"
+            },
+            {
+              "operation": "regex",
+              "value2": "^(bulk_hot|bulk_warm|bulk_cold)$",
+              "outputKey": "bulk deal"
+            },
+            {
+              "value2": "generic_product_query",
+              "outputKey": "generic_product_query"
+            },
+            {
+              "value2": "generic_finance_admin_hr",
+              "outputKey": "finance admin hr"
+            },
+            {
+              "value2": "complaint",
+              "outputKey": "complaint"
+            },
+            {
+              "value2": "spam_invalid",
+              "outputKey": "spam"
+            }
+          ]
+        }
+      },
+      "id": "e71cec6f-dbf4-4b4b-83f7-39f035fa2f4d",
+      "name": "Route By Type2",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        -4080,
+        2352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO complaints (complaint_id,customer_name,customer_email,source,email_message_id,subject,complaint_text,status) VALUES ($1,$2,$3,'GMAIL',$4,$5,$6,'RECEIVED') ON CONFLICT (complaint_id) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ [$('Normalize Gmail Complaint').first().json.complaint_id,$('Normalize Gmail Complaint').first().json.customer_name,$('Normalize Gmail Complaint').first().json.customer_email,$('Normalize Gmail Complaint').first().json.message_id,$('Normalize Gmail Complaint').first().json.subject,$('Normalize Gmail Complaint').first().json.complaint_text] }}"
+        }
+      },
+      "id": "74282ff2-1220-4f7f-88f8-696f15853ea8",
+      "name": "PostgreSQL - Create Complaint",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3856,
+        2800
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$('Normalize Gmail Complaint').first().json.customer_email}}",
+        "subject": "={{'We have received your complaint - '+$('Normalize Gmail Complaint').first().json.complaint_id}}",
+        "emailType": "text",
+        "message": "=Dear {{$('Normalize Gmail Complaint').first().json.customer_name || 'Customer'}},\n\nWe are very sorry to hear about your experience and sincerely apologize for the inconvenience caused.\n\nWe have received your complaint ({{$('Normalize Gmail Complaint').first().json.complaint_id}}). Someone from our team will review the matter and connect with you shortly.\n\nThank you for bringing this to our attention.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "444aec9e-2b39-4347-a566-95b67e2efae8",
+      "name": "Gmail - Immediate Apology",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -3632,
+        2800
+      ],
+      "webhookId": "b0384c2a-a466-402b-9fb6-4a906d15541c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE complaints SET category=$2,subcategory=$3,severity=$4,sentiment=$5,refund_requested=$6,ai_recommendation=$7,ai_confidence=$8,ai_reason=$9,status='HUMAN_REVIEW',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.category,$json.subcategory,$json.severity,$json.sentiment,$json.refund_requested,$json.recommended_action,$json.confidence,$json.reason] }}"
+        }
+      },
+      "id": "a5c88de6-2879-46aa-ad0d-9179049b74c4",
+      "name": "PostgreSQL - Save AI Analysis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2960,
+        2896
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "operational_logs",
+        "fields": "={{ {event_id:'AI-'+$json.complaint_id,event_type:'AI_ANALYSIS_COMPLETED',complaint_id:$json.complaint_id,category:$json.category,severity:$json.severity,recommendation:$json.recommended_action,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "38f9ad13-2145-4f70-ab7e-26ef89cd1890",
+      "name": "MongoDB - Operational Log",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -2736,
+        2496
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "innovativediptisankhe@gmail.com",
+        "subject": "=[SalesGenie REVIEWER] || {{'Complaint review required: '+$('Complaint AI Data').first().json.complaint_id}}",
+        "emailType": "text",
+        "message": "Complaint ID: {{$('Complaint AI Data').first().json.complaint_id}}\nCustomer: {{$('Complaint AI Data').first().json.customer_name}}\nEmail: {{$('Complaint AI Data').first().json.customer_email}}\nCategory: {{$('Complaint AI Data').first().json.category}}\nSeverity: {{$('Complaint AI Data').first().json.severity}}\nAI recommendation: {{$('Complaint AI Data').first().json.refund_recommended?'REFUND':$('Complaint AI Data').first().json.recommended_action}}\nAI confidence: {{$('Complaint AI Data').first().json.confidence}}\n\nReason:\n{{$('Complaint AI Data').first().json.reason}}\n\nEvidence:\n{{$('Complaint AI Data').first().json.evidence ? $('Complaint AI Data').first().json.evidence.join('\\n') : ''}}\n\nHuman decision is mandatory. Configure the next Wait/Form step to capture decision, mandatory reason and reviewer.",
+        "options": {}
+      },
+      "id": "3223b327-5ab7-4532-a7ea-0b683eb4cbfb",
+      "name": "Gmail - Human Review Request",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -2736,
+        2992
+      ],
+      "webhookId": "26747325-354e-4fae-baa6-dd19c3ac2410",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      },
+      "id": "86ffd787-d233-4d4c-8aa5-f837382a7204",
+      "name": "HUMAN IN LOOP - Configure Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2512,
+        2992
+      ],
+      "notesInFlow": true,
+      "webhookId": "82d247ce-af38-4ab4-bb3b-107a5a1ad537",
+      "notes": "Configure this Wait node with your n8n version's resume URL/form pattern. Capture decision (REFUND/REJECT), reason (mandatory), reviewer (mandatory)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.decision}}",
+              "rightValue": "REFUND",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "c5f7fc60-e72d-4bbb-9b82-87ab726bf7ed"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "65cec835-2871-4c39-8558-011d70d6ef55",
+      "name": "Decision - Refund?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        2992
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO human_decisions (complaint_id,decision,reason,reviewer) VALUES ($1,'REFUND',$2,$3); UPDATE complaints SET status='REFUND_APPROVED',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.reason,$json.reviewer] }}"
+        }
+      },
+      "id": "8e880f6b-e1d2-44d1-9dee-4b477676e708",
+      "name": "PostgreSQL - Refund Decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1840,
+        2688
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "finance_logs",
+        "fields": "={{ {event_id:'FIN-'+$json.complaint_id,event_type:'REFUND_APPROVED',complaint_id:$json.complaint_id,reason:$json.reason,reviewer:$json.reviewer,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "7dea5e97-8d0d-4cac-a84c-ddfb5cd0dcbd",
+      "name": "MongoDB - Finance Log",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -1616,
+        2560
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer_email}}",
+        "subject": "={{'Refund approved - '+$json.complaint_id}}",
+        "emailType": "text",
+        "message": "Dear {{$json.customer_name || 'Customer'}},\n\nWe sincerely apologize for the inconvenience caused.\n\nYour complaint has been reviewed and your refund has been approved. Our team will process the refund and share the refund reference with you once available.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "fa841005-31db-4449-8662-5e6692504daf",
+      "name": "Gmail - Refund Approved",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1616,
+        2752
+      ],
+      "webhookId": "91f3b3ae-5988-46db-b5e2-e72bb9d77dac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO human_decisions (complaint_id,decision,reason,reviewer) VALUES ($1,'REJECT',$2,$3); UPDATE complaints SET status='REFUND_REJECTED',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.reason,$json.reviewer] }}"
+        }
+      },
+      "id": "52c5fa78-229b-4d1d-a940-f609fa912021",
+      "name": "PostgreSQL - Rejection",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2064,
+        3040
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "admin_logs",
+        "fields": "={{ {event_id:'ADM-'+$json.complaint_id,event_type:'REFUND_REJECTED',complaint_id:$json.complaint_id,reason:$json.reason,reviewer:$json.reviewer,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "dbe4ccc4-d531-49dc-8231-514522a656d1",
+      "name": "MongoDB - Admin Log",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        2944
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer_email}}",
+        "subject": "={{'Complaint update - '+$json.complaint_id}}",
+        "emailType": "text",
+        "message": "Dear {{$json.customer_name || 'Customer'}},\n\nWe sincerely apologize for the inconvenience caused.\n\nWe have carefully reviewed your complaint. Unfortunately, the refund cannot be approved based on the information currently available.\n\nIf you have additional supporting information, please reply to this email and our team will review it.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "52fd6265-6011-48e1-be8d-e8719190e20a",
+      "name": "Gmail - Refund Rejected",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1616,
+        3040
+      ],
+      "webhookId": "ae61ddce-1655-4f6e-8555-c75726f19b2b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1568838377,
+          "mode": "list",
+          "cachedResultName": "complaint",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=1568838377"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3b11b39a-11cf-4a96-a04b-e098c154c6f4",
+      "name": "Log Complaint - Review Pending1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2960,
+        2624
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Create columns exactly as mapped, then select Google Sheets credential."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "YOUR_GOOGLE_SHEET_ID",
+        "sheetName": "Complaint_Audit",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "complaint_id": "={{$json.complaint_id}}",
+            "event_time": "={{new Date().toISOString()}}",
+            "event": "={{$json.decision === 'refund' ? 'REFUND_APPROVED' : 'COMPLAINT_REJECTED'}}",
+            "decision": "={{$json.decision}}",
+            "decision_reason": "={{$json.decision_reason}}",
+            "ai_category": "={{$json.ai_category}}",
+            "ai_severity": "={{$json.ai_severity}}",
+            "ai_reason": "={{$json.ai_reason}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "12aa5421-8f43-45aa-a9d2-a2af00165a97",
+      "name": "Log Final Decision1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1392,
+        3040
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        }
+      },
+      "id": "5c3e2194-a2c2-4d17-b49e-ad2992f6d435",
+      "name": "SalesGenieSupport Team Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4304,
+        2848
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const x = $input.first().json; \nconst now = new Date(); \nconst id = 'CMP-' + now.toISOString().replace(/[-:TZ.]/g, '').slice(0, 14) + '-' + Math.floor(Math.random() * 9000 + 1000);\n\n// Regex to separate \"Name <email@domain.com>\" from the x[\"From\"] string\nconst fromString = x[\"From\"] || '';\nconst nameMatch = fromString.match(/^([^<]+)/);\nconst emailMatch = fromString.match(/<([^>]+)>/);\n\nconst customer_name = nameMatch ? nameMatch[1].trim() : '';\nconst customer_email = emailMatch ? emailMatch[1].trim() : fromString;\n\n// Regex to extract the order ID (e.g., ORD-45872) from the text/snippet\nconst snippetText = x.textPlain || x.text || x.snippet || '';\nconst orderMatch = snippetText.match(/ORD-\\d+/i);\nconst order_id = orderMatch ? orderMatch[0] : '';\nconst pur_amt= snippetText.match(/amount-\\d+/i);\nconst add_info= snippetText.match(/details-\\d+/i) || snippetText.match(/info-\\d+/i) ;\n\nreturn [{\n  json: {\n    complaint_id: id,\n    customer_name: customer_name,\n    customer_email: customer_email,\n    subject: x[\"Subject\"] || x.subject || '',\n    complaint_text: snippetText,\n    message_id: x.id || x.messageId || '',\n    order_id: order_id,\n    purchase_amount: pur_amt,\n    additional_information: add_info\n  }\n}];"
+      },
+      "id": "402f6bad-ceb2-4bd3-852c-ff4bb5d8ace8",
+      "name": "Normalize Gmail Complaint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4080,
+        2848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', stream: false, format: 'json', messages: [ { role: 'system', content: `You are a Customer Complaint Analysis Assistant for a furniture company.\n\nAnalyze the customer complaint and return ONLY valid JSON.\n\nYou must follow these rules:\n- You are an AI analysis assistant only.\n- You must NOT make the final refund decision.\n- The final refund decision must always be made by a human reviewer.\n- Do not invent facts.\n- If important information is missing, list it in missing_information.\n- Recommend ESCALATE for safety issues, fraud concerns, legal/regulatory concerns, or high-risk cases.\n- Recommend REQUEST_MORE_INFORMATION when there is insufficient evidence.\n- Recommend REFUND only when the complaint provides sufficient evidence that a refund is reasonably justified.\n\nAllowed categories:\nProduct Quality, Product Damage, Wrong Product, Missing Product, Delivery Delay, Payment Issue, Billing Issue, Service Issue, Cancellation, Refund Issue, Technical Issue, Safety Issue, Fraud Concern, Other\n\nAllowed severity:\nLOW, MEDIUM, HIGH, CRITICAL\n\nAllowed sentiment:\nPOSITIVE, NEUTRAL, NEGATIVE, VERY_NEGATIVE\n\nAllowed recommended_action:\nREFUND, REJECT_REFUND, REQUEST_MORE_INFORMATION, ESCALATE\n\nReturn EXACTLY these 11 keys:\ncategory\nsubcategory\nseverity\nsentiment\nrefund_requested\nrefund_recommended\nrecommended_action\nconfidence\nreason\nevidence\nmissing_information\n\nThe response must contain no additional keys.\nReturn only JSON. No markdown. No explanation. No code fences.` }, { role: 'user', content: `Complaint ID: ${$('Normalize Gmail Complaint').first().json.complaint_id}\n\nCustomer: ${$('Normalize Gmail Complaint').first().json.customer_name}\n\nCustomer Email: ${$('Normalize Gmail Complaint').first().json.customer_email}\n\nSubject: ${$('Normalize Gmail Complaint').first().json.subject}\n\nComplaint:\n${$('Normalize Gmail Complaint').first().json.complaint_text}` } ], options: { temperature: 0.1, num_predict: 400 } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "bbae19ee-fadb-4404-817c-24d74e141d65",
+      "name": "Complaint Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3408,
+        2800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw =\n  $json.message?.content ||\n  $json.response ||\n  $json.body?.response ||\n  '';\n\nif (!raw) {\n  throw new Error('Ollama response does not contain message.content');\n}\n\nlet ai;\n\ntry {\n  ai = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (e) {\n  throw new Error('Invalid Ollama JSON: ' + raw);\n}\n\nconst o = $('Normalize Gmail Complaint').first().json;\n\nreturn [\n  {\n    json: {\n      ...o,\n\n      category: ai.category,\n      subcategory: ai.subcategory,\n      severity: ai.severity,\n      sentiment: ai.sentiment,\n      refund_requested: ai.refund_requested,\n      refund_recommended: ai.refund_recommended,\n      recommended_action: ai.recommended_action,\n      confidence: ai.confidence,\n      reason: ai.reason,\n      evidence: ai.evidence,\n      missing_information: ai.missing_information\n    }\n  }\n];"
+      },
+      "id": "057b68df-25c6-428b-b728-452d9988b42d",
+      "name": "Complaint AI Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3184,
+        2800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse AI Result1').first().json.temperature }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "53451f04-b230-4425-8b22-9b886aa424fd"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f2a6bf7-5904-42ed-a213-9c3c1e3a5860",
+      "name": "Bulk Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2512,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse AI Result1').first().json.temperature }}",
+              "rightValue": "warm",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "c3a1d48d-7cdb-4e0c-a5c5-1608b4dbc24a"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "55335511-bab9-4050-9d1f-7dc5825f8572",
+      "name": "Retail Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      },
+      "id": "18ce49e1-837d-42e6-ac32-2a29c157256e",
+      "name": "HUMAN IN LOOP - Bulk offer",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2288,
+        1072
+      ],
+      "notesInFlow": true,
+      "webhookId": "82d247ce-af38-4ab4-bb3b-107a5a1ad537",
+      "notes": "Configure this Wait node with your n8n version's resume URL/form pattern. Capture decision (REFUND/REJECT), reason (mandatory), reviewer (mandatory)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Parse AI Result1').first().json.temperature }}",
+              "rightValue": "=cold",
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              },
+              "id": "53451f04-b230-4425-8b22-9b886aa424fd"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "97fd59d2-1e2a-46f0-bda4-d2666c4dec25",
+      "name": "Lead converted to Warm or Hot",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1168,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE complaints SET category=$2,subcategory=$3,severity=$4,sentiment=$5,refund_requested=$6,ai_recommendation=$7,ai_confidence=$8,ai_reason=$9,status='HUMAN_REVIEW',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.category,$json.subcategory,$json.severity,$json.sentiment,$json.refund_requested,$json.recommended_action,$json.confidence,$json.reason] }}"
+        }
+      },
+      "id": "9a2bb65e-8bd9-4be1-bae1-cb3e33b43cde",
+      "name": "PostgreSQL - Save AI Analysis1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2960,
+        2128
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "operational_logs",
+        "fields": "={{ {event_id:'AI-'+$json.complaint_id,event_type:'AI_ANALYSIS_COMPLETED',complaint_id:$json.complaint_id,category:$json.category,severity:$json.severity,recommendation:$json.recommended_action,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "daef4773-5849-4a7c-b0c3-9d9befb706ee",
+      "name": "MongoDB - Operational Log1",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -2736,
+        1744
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "hours"
+      },
+      "id": "d03a527c-3b1d-4bcb-8aba-28b6e90b2f0b",
+      "name": "HUMAN IN LOOP - Configure Approval1",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -2512,
+        2272
+      ],
+      "notesInFlow": true,
+      "webhookId": "82d247ce-af38-4ab4-bb3b-107a5a1ad537",
+      "notes": "Configure this Wait node with your n8n version's resume URL/form pattern. Capture decision (REFUND/REJECT), reason (mandatory), reviewer (mandatory)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.decision}}",
+              "rightValue": "REFUND",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "c5f7fc60-e72d-4bbb-9b82-87ab726bf7ed"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2fb4b73e-6195-46ea-a573-733807065606",
+      "name": "Decision - Refund?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        2272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO human_decisions (complaint_id,decision,reason,reviewer) VALUES ($1,'REFUND',$2,$3); UPDATE complaints SET status='REFUND_APPROVED',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.reason,$json.reviewer] }}"
+        }
+      },
+      "id": "2db75ecd-3291-4018-8d32-0ee6e1831015",
+      "name": "PostgreSQL - Refund Decision1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1840,
+        1968
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "finance_logs",
+        "fields": "={{ {event_id:'FIN-'+$json.complaint_id,event_type:'REFUND_APPROVED',complaint_id:$json.complaint_id,reason:$json.reason,reviewer:$json.reviewer,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "3d600920-5910-4f15-8c10-c6046d29ce01",
+      "name": "MongoDB - Finance Log1",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -1616,
+        1872
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer_email}}",
+        "subject": "={{'Refund approved - '+$json.complaint_id}}",
+        "emailType": "text",
+        "message": "Dear {{$json.customer_name || 'Customer'}},\n\nWe sincerely apologize for the inconvenience caused.\n\nYour complaint has been reviewed and your refund has been approved. Our team will process the refund and share the refund reference with you once available.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "b7b4caef-d1e6-4645-87eb-6c6ff718c347",
+      "name": "Gmail - Refund Approved1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1616,
+        2064
+      ],
+      "webhookId": "91f3b3ae-5988-46db-b5e2-e72bb9d77dac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO human_decisions (complaint_id,decision,reason,reviewer) VALUES ($1,'REJECT',$2,$3); UPDATE complaints SET status='REFUND_REJECTED',updated_at=NOW() WHERE complaint_id=$1;",
+        "options": {
+          "queryReplacement": "={{ [$json.complaint_id,$json.reason,$json.reviewer] }}"
+        }
+      },
+      "id": "8c700dfb-14b5-46ca-8442-e0d095c99064",
+      "name": "PostgreSQL - Rejection1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2064,
+        2320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "admin_logs",
+        "fields": "={{ {event_id:'ADM-'+$json.complaint_id,event_type:'REFUND_REJECTED',complaint_id:$json.complaint_id,reason:$json.reason,reviewer:$json.reviewer,created_at:new Date()} }}",
+        "options": {}
+      },
+      "id": "7b7e73d2-aa53-4aa3-b888-23177f6486ff",
+      "name": "MongoDB - Admin Log1",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        -1840,
+        2256
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "dyG0ehT2wuEP7kVr",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.customer_email}}",
+        "subject": "={{'Complaint update - '+$json.complaint_id}}",
+        "emailType": "text",
+        "message": "Dear {{$json.customer_name || 'Customer'}},\n\nWe sincerely apologize for the inconvenience caused.\n\nWe have carefully reviewed your complaint. Unfortunately, the refund cannot be approved based on the information currently available.\n\nIf you have additional supporting information, please reply to this email and our team will review it.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "dfef1bad-1258-4722-ab5f-d7c9594a397c",
+      "name": "Gmail - Refund Rejected1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -1616,
+        2320
+      ],
+      "webhookId": "ae61ddce-1655-4f6e-8555-c75726f19b2b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": "YOUR_GOOGLE_SHEET_ID",
+        "sheetName": "Complaint_Audit",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "complaint_id": "={{$json.complaint_id}}",
+            "event_time": "={{new Date().toISOString()}}",
+            "event": "={{$json.decision === 'refund' ? 'REFUND_APPROVED' : 'COMPLAINT_REJECTED'}}",
+            "decision": "={{$json.decision}}",
+            "decision_reason": "={{$json.decision_reason}}",
+            "ai_category": "={{$json.ai_category}}",
+            "ai_severity": "={{$json.ai_severity}}",
+            "ai_reason": "={{$json.ai_reason}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "0761816f-78e6-480b-beab-ab8840ff4357",
+      "name": "Log Final Decision2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1392,
+        2304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$('Normalize Email Input').first().json.sender_email}}",
+        "subject": "=Thank you for your interest! Let's finalize",
+        "emailType": "text",
+        "message": "=Dear Customer {{$('Normalize Email Input').first().json.sender_email}},\n\nThank you for your interest in {{$('Normalize Email Input').first().json.lead_id}}! We are thrilled to help you move forward with this purchase and have locked in your exclusive hot deal.To complete this transaction as quickly as possible, a member of our team will connect with you shortly to execute the next steps and finalize the process.If you have a preferred time or phone number for us to reach you, please reply directly to this email.We appreciate your business and look forward to speaking with you in just a few moments!\nBest regards,\nOak & Ember\n\n\n\nWe are very sorry to hear about your experience and sincerely apologize for the inconvenience caused.\n\nWe have received your complaint ({{$('Normalize Gmail Complaint').first().json.complaint_id}}). Someone from our team will review the matter and connect with you shortly.\n\nThank you for bringing this to our attention.\n\nRegards,\nCustomer Support Team",
+        "options": {}
+      },
+      "id": "7b2972a9-824c-45b2-b74b-67dbd64c2ead",
+      "name": "Gmail - Immediate Bulk Hot Deal",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -3632,
+        2032
+      ],
+      "webhookId": "b0384c2a-a466-402b-9fb6-4a906d15541c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify({ model: 'llama3.2', stream: false, format: 'json', messages: [ { role: 'system', content: `You are a Customer Complaint Analysis Assistant for a furniture company.\n\nAnalyze the customer complaint and return ONLY valid JSON.\n\nYou must follow these rules:\n- You are an AI analysis assistant only.\n- You must NOT make the final refund decision.\n- The final refund decision must always be made by a human reviewer.\n- Do not invent facts.\n- If important information is missing, list it in missing_information.\n- Recommend ESCALATE for safety issues, fraud concerns, legal/regulatory concerns, or high-risk cases.\n- Recommend REQUEST_MORE_INFORMATION when there is insufficient evidence.\n- Recommend REFUND only when the complaint provides sufficient evidence that a refund is reasonably justified.\n\nAllowed categories:\nProduct Quality, Product Damage, Wrong Product, Missing Product, Delivery Delay, Payment Issue, Billing Issue, Service Issue, Cancellation, Refund Issue, Technical Issue, Safety Issue, Fraud Concern, Other\n\nAllowed severity:\nLOW, MEDIUM, HIGH, CRITICAL\n\nAllowed sentiment:\nPOSITIVE, NEUTRAL, NEGATIVE, VERY_NEGATIVE\n\nAllowed recommended_action:\nREFUND, REJECT_REFUND, REQUEST_MORE_INFORMATION, ESCALATE\n\nReturn EXACTLY these 11 keys:\ncategory\nsubcategory\nseverity\nsentiment\nrefund_requested\nrefund_recommended\nrecommended_action\nconfidence\nreason\nevidence\nmissing_information\n\nThe response must contain no additional keys.\nReturn only JSON. No markdown. No explanation. No code fences.` }, { role: 'user', content: `Complaint ID: ${$('Normalize Gmail Complaint').first().json.complaint_id}\n\nCustomer: ${$('Normalize Gmail Complaint').first().json.customer_name}\n\nCustomer Email: ${$('Normalize Gmail Complaint').first().json.customer_email}\n\nSubject: ${$('Normalize Gmail Complaint').first().json.subject}\n\nComplaint:\n${$('Normalize Gmail Complaint').first().json.complaint_text}` } ], options: { temperature: 0.1, num_predict: 400 } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d2d70099-c630-489b-9ed0-d53c4e66d59a",
+      "name": "Deal Analyzer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3408,
+        2032
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw =\n  $json.message?.content ||\n  $json.response ||\n  $json.body?.response ||\n  '';\n\nif (!raw) {\n  throw new Error('Ollama response does not contain message.content');\n}\n\nlet ai;\n\ntry {\n  ai = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch (e) {\n  throw new Error('Invalid Ollama JSON: ' + raw);\n}\n\nconst o = $('Normalize Gmail Complaint').first().json;\n\nreturn [\n  {\n    json: {\n      ...o,\n\n      category: ai.category,\n      subcategory: ai.subcategory,\n      severity: ai.severity,\n      sentiment: ai.sentiment,\n      refund_requested: ai.refund_requested,\n      refund_recommended: ai.refund_recommended,\n      recommended_action: ai.recommended_action,\n      confidence: ai.confidence,\n      reason: ai.reason,\n      evidence: ai.evidence,\n      missing_information: ai.missing_information\n    }\n  }\n];"
+      },
+      "id": "b8b70a5e-ef0c-442e-bc39-6036ab13483a",
+      "name": "Deal AI Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3184,
+        2032
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1568838377,
+          "mode": "list",
+          "cachedResultName": "complaint",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=1568838377"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "83f5800e-5913-4f69-803a-24b77ace3634",
+      "name": "Log Hot Bulk Deal- Submitted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -2960,
+        1696
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      },
+      "notes": "Create columns exactly as mapped, then select Google Sheets credential."
+    },
+    {
+      "parameters": {
+        "sendTo": "innovativediptisankhe@gmail.com",
+        "subject": "=[SalesGenie HOT BULK Deal SUBMITTED] || {{'Complaint review required: '+$('Deal AI Data').first().json.complaint_id}}",
+        "emailType": "text",
+        "message": "Complaint ID: {{$('Complaint AI Data').first().json.complaint_id}}\nCustomer: {{$('Complaint AI Data').first().json.customer_name}}\nEmail: {{$('Complaint AI Data').first().json.customer_email}}\nCategory: {{$('Complaint AI Data').first().json.category}}\nSeverity: {{$('Complaint AI Data').first().json.severity}}\nAI recommendation: {{$('Complaint AI Data').first().json.refund_recommended?'REFUND':$('Complaint AI Data').first().json.recommended_action}}\nAI confidence: {{$('Complaint AI Data').first().json.confidence}}\n\nReason:\n{{$('Complaint AI Data').first().json.reason}}\n\nEvidence:\n{{$('Complaint AI Data').first().json.evidence ? $('Complaint AI Data').first().json.evidence.join('\\n') : ''}}\n\nHuman decision is mandatory. Configure the next Wait/Form step to capture decision, mandatory reason and reviewer.",
+        "options": {}
+      },
+      "id": "ffcd9f89-a941-436c-baab-9282ca795d4e",
+      "name": "Gmail - Senior Sales Person",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -2736,
+        2272
+      ],
+      "webhookId": "26747325-354e-4fae-baa6-dd19c3ac2410",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "e24269c7-efed-406c-a263-8b9e97bc7025",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -4976,
+        3360
+      ],
+      "notes": "Safety net for every VaibhavCapstone-* workflow (set as their errorWorkflow). Nothing fails silently: dead-letter known lead -> audit event -> operator alert."
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst exec = j.execution || {};\nconst err = exec.error || {};\n// n8n Code-node errors split the thrown message on colons across message/description;\n// the stack keeps the original string, so search all three for the LEAD/TRACE tags.\nconst hay = [err.message, err.description, err.stack].filter(Boolean).join(\" | \");\nconst leadM = hay.match(/LEAD:([A-Za-z0-9_-]+)/);\nconst traceM = hay.match(/TRACE:([A-Za-z0-9_-]+)/);\nreturn [{ json: {\n  workflow_name: (j.workflow || {}).name || \"unknown\",\n  workflow_id: (j.workflow || {}).id || null,\n  execution_id: exec.id || null,\n  execution_url: exec.url || null,\n  failed_node: exec.lastNodeExecuted || (err.node || {}).name || null,\n  message: hay.slice(0, 500) || \"unknown error\",\n  lead_id: leadM ? leadM[1] : \"\",\n  trace_id: traceM ? traceM[1] : null,\n  happened_at: new Date().toISOString()\n} }];"
+      },
+      "id": "359b13b8-e4c8-4ea3-93e6-83d503c05794",
+      "name": "Extract Error Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4752,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE vaibhavcapstone_leads\nSET status = 'DEAD_LETTER',\n    status_detail = jsonb_build_object(\n      'error', $2, 'failed_node', $3, 'workflow', $4, 'execution_id', $5, 'at', now()),\n    updated_at = now()\nWHERE lead_id = NULLIF($1, '')\n  AND status NOT IN ('SENT', 'REJECTED', 'DEAD_LETTER')\nRETURNING lead_id, business_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.lead_id, $json.message, $json.failed_node, $json.workflow_name, $json.execution_id] }}"
+        }
+      },
+      "id": "822c22b6-1d0c-4315-b100-df469d5540a1",
+      "name": "Dead-letter Lead If Known",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4528,
+        3360
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO vaibhavcapstone_events (business_id, lead_id, trace_id, agent, action, actor, detail)\nVALUES (\n  COALESCE((SELECT business_id FROM vaibhavcapstone_leads WHERE lead_id = NULLIF($1,'')), 'platform'),\n  NULLIF($1, ''), NULLIF($2, ''), 'error-handler', 'WORKFLOW_ERROR', 'system', $3::jsonb)\nRETURNING event_id;",
+        "options": {
+          "queryReplacement": "={{ [$('Extract Error Context').first().json.lead_id, $('Extract Error Context').first().json.trace_id || '', JSON.stringify($('Extract Error Context').first().json)] }}"
+        }
+      },
+      "id": "c74e0611-e5d0-4ce3-915f-f4015ae7fcfc",
+      "name": "Log Error Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -4304,
+        3360
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "postgres": {
+          "id": "jekn6wDNtmXFYnzG",
+          "name": "Postgres account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "salesgeniereviewer@gmail.com",
+        "toEmail": "salesgeniereviewer@gmail.com",
+        "subject": "={{ '[SalesGenie Error ALERT] ' + $('Extract Error Context').first().json.workflow_name + ' failed at ' + ($('Extract Error Context').first().json.failed_node || 'unknown node') }}",
+        "emailFormat": "text",
+        "text": "={{ 'SalesGenie workflow error\\n\\nWorkflow: ' + $('Extract Error Context').first().json.workflow_name + '\\nFailed node: ' + $('Extract Error Context').first().json.failed_node + '\\nLead: ' + ($('Extract Error Context').first().json.lead_id || 'none identified') + '\\nExecution: ' + ($('Extract Error Context').first().json.execution_url || $('Extract Error Context').first().json.execution_id) + '\\nAt: ' + $('Extract Error Context').first().json.happened_at + '\\n\\nError:\\n' + $('Extract Error Context').first().json.message + '\\n\\nIf a lead is named above it has been parked as DEAD_LETTER and needs operator action.' }}",
+        "options": {}
+      },
+      "id": "0d12adae-db54-43e1-81fe-6e6411edc204",
+      "name": "Alert Operator",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -3856,
+        3264
+      ],
+      "webhookId": "48f8478d-87cd-4f25-be61-d63da86f058c",
+      "credentials": {
+        "smtp": {
+          "id": "xQobPDl2CEIml7jR",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "id": "c1",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $('Extract Error Context').first().json.execution_id }}",
+              "rightValue": ""
+            },
+            {
+              "id": "c2",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $('Extract Error Context').first().json.failed_node }}",
+              "rightValue": ""
+            },
+            {
+              "id": "c3",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $('Extract Error Context').first().json.lead_id }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "dc8d2d1b-64a0-473a-be76-d802dc69d056",
+      "name": "Real Failure?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4080,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "topic": "HotLead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.kafka",
+      "typeVersion": 1,
+      "position": [
+        -4976,
+        3680
+      ],
+      "id": "dc5712d8-7a97-4c5e-8b0e-9225cf3ab357",
+      "name": "Kafka"
+    },
+    {
+      "parameters": {
+        "sendTo": "innovativediptisankhe@gmail.com",
+        "subject": "={{ '[SalesGenie ALERT] ' + $('Extract Error Context').first().json.workflow_name + ' failed at ' + ($('Extract Error Context').first().json.failed_node || 'unknown node') }}",
+        "message": "There is an error occured",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -3856,
+        3456
+      ],
+      "id": "642f75d2-c496-425e-b2fd-07d6b3af6d81",
+      "name": "Send a message",
+      "webhookId": "e79ae82d-7884-41cf-877e-42abde09cda3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "subject",
+              "name": "subject",
+              "value": "Request for 50 custom oak desks for our new office",
+              "type": "string"
+            },
+            {
+              "id": "email_body",
+              "name": "email_body",
+              "value": "Hello, We are setting up a new corporate office and require 50 custom oak desks. Please provide your best quotation, available finishes and delivery timeline. We need the desks delivered next month. Regards, John",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f50132a2-8d3f-41cf-ab84-a4eea0673086",
+      "name": "Manual Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4752,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "39c61108-e9a8-4c41-bb8b-bccaa2eb0dff",
+      "name": "Every Friday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3264,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs",
+          "mode": "list",
+          "cachedResultName": "OakEmberHumanInLoop",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 915303454,
+          "mode": "list",
+          "cachedResultName": "CRMLead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EQPsm6rybd3Uk-1qLTS9YN9RCJ7kF4H1YxAiKYgBTgs/edit#gid=915303454"
+        },
+        "options": {}
+      },
+      "id": "e15b3354-37e6-4e5b-b79d-a9af3d3328cf",
+      "name": "Read Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3040,
+        3360
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "HHcsfdcoRv3APkIE",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lf = String.fromCharCode(10);\nconst now = Date.now();\nconst weekAgo = now - 7 * 24 * 60 * 60 * 1000;\nconst rows = $input.all().map(i => i.json).filter(r => r && Object.keys(r).length > 0);\nconst recent = rows.filter(r => {\n  const t = Date.parse(r.timestamp);\n  return !isNaN(t) && t >= weekAgo && t <= now;\n});\nconst windowLabel = new Date(weekAgo).toISOString().slice(0, 10) + \" to \" + new Date(now).toISOString().slice(0, 10);\n\nif (recent.length === 0) {\n  const body = \"SalesGenie Weekly Insights (\" + windowLabel + \")\" + lf + lf +\n    \"No inbound inquiries were processed this week.\" + lf +\n    \"No leads to report.\";\n  return [{ json: { has_activity: false, subject: \"SalesGenie Weekly Insights - No activity (\" + windowLabel + \")\", report: body } }];\n}\n\nconst norm = (s) => (s == null ? \"\" : String(s)).trim().toLowerCase();\nlet hot = 0, warm = 0, cold = 0, approved = 0, rejected = 0, other = 0;\nconst productCounts = {};\nfor (const r of recent) {\n  const score = norm(r.lead_score);\n  if (score === \"hot\") hot++;\n  else if (score === \"warm\") warm++;\n  else if (score === \"cold\") cold++;\n  const st = norm(r.status);\n  if (st === \"approved\") approved++;\n  else if (st === \"rejected\") rejected++;\n  else other++;\n  const rec = (r.recommendations == null ? \"\" : String(r.recommendations));\n  const products = rec.split(lf).map(x => x.split(\" - \")[0].trim()).filter(x => x);\n  for (const p of products) {\n    productCounts[p] = (productCounts[p] || 0) + 1;\n  }\n}\nconst topProducts = Object.keys(productCounts)\n  .map(k => ({ product: k, count: productCounts[k] }))\n  .sort((a, b) => b.count - a.count)\n  .slice(0, 5);\nconst topProductsText = topProducts.length\n  ? topProducts.map(p => \"  - \" + p.product + \" (\" + p.count + \")\").join(lf)\n  : \"  - None\";\n\nconst total = recent.length;\nconst pct = (n) => total ? Math.round((n / total) * 100) : 0;\n\nconst body = \"SalesGenie Weekly Insights (\" + windowLabel + \")\" + lf + lf +\n  \"Total inquiries processed: \" + total + lf + lf +\n  \"Lead scoring:\" + lf +\n  \"  - Hot:  \" + hot + \" (\" + pct(hot) + \"%)\" + lf +\n  \"  - Warm: \" + warm + \" (\" + pct(warm) + \"%)\" + lf +\n  \"  - Cold: \" + cold + \" (\" + pct(cold) + \"%)\" + lf + lf +\n  \"Approval outcomes:\" + lf +\n  \"  - Approved: \" + approved + lf +\n  \"  - Rejected: \" + rejected + lf +\n  (other ? \"  - Other/pending: \" + other + lf : \"\") + lf +\n  \"Top recommended products:\" + lf + topProductsText + lf;\n\nreturn [{ json: {\n  has_activity: true,\n  subject: \"SalesGenie Weekly Insights - \" + total + \" leads (\" + windowLabel + \")\",\n  report: body,\n  total: total, hot: hot, warm: warm, cold: cold,\n  approved: approved, rejected: rejected,\n  top_products: topProducts\n} }];"
+      },
+      "id": "7458e373-e677-4dd2-a36f-27830552d47c",
+      "name": "Aggregate Weekly Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2816,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "sankhe.dipti@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.report }}",
+        "options": {}
+      },
+      "id": "1de4c408-fb72-43a0-9ea6-ea0829a514a2",
+      "name": "Email Weekly Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -2592,
+        3360
+      ],
+      "webhookId": "ebec46b6-b997-480a-96a2-7f0cee21333c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aTyL3rdF5MceCh3s",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Inbound Email Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email Input": {
+      "main": [
+        [
+          {
+            "node": "Ollama - SalesGenie Router1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router Agent - Classify Email": {
+      "main": [
+        [
+          {
+            "node": "Log Trace - Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Router Output": {
+      "main": [
+        [
+          {
+            "node": "Route By Type2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Ingestion Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Ingestion Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ingestion Output": {
+      "main": [
+        [
+          {
+            "node": "Lead Qualifier Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Qualifier Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Qualifier Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Qualifier Output": {
+      "main": [
+        [
+          {
+            "node": "Read Catalog (Recommender)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Catalog (Recommender)": {
+      "main": [
+        [
+          {
+            "node": "Retrieve & Rank Catalog Matches (RAG-lite)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve & Rank Catalog Matches (RAG-lite)": {
+      "main": [
+        [
+          {
+            "node": "Product Recommender Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product Recommender Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Recommender Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Recommender Output": {
+      "main": [
+        [
+          {
+            "node": "Catalog Validator (Deterministic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog Validator (Deterministic)": {
+      "main": [
+        [
+          {
+            "node": "Validation Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Passed?": {
+      "main": [
+        [
+          {
+            "node": "Response Drafter Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag Hallucination for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Drafter Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Drafter Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Drafter Output": {
+      "main": [
+        [
+          {
+            "node": "CRM Formatter - Map to Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM Formatter - Map to Schema": {
+      "main": [
+        [
+          {
+            "node": "Append to HITL_Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to HITL_Queue": {
+      "main": [
+        [
+          {
+            "node": "Append to Leads (CRM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Leads (CRM)": {
+      "main": [
+        [
+          {
+            "node": "Respond - Lead Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag Hallucination for Review": {
+      "main": [
+        [
+          {
+            "node": "Respond - Flagged For Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Catalog (FAQ)": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Catalog Context (FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Catalog Context (FAQ)": {
+      "main": [
+        [
+          {
+            "node": "FAQ / RAG Answer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAQ / RAG Answer Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse FAQ Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse FAQ Output": {
+      "main": [
+        [
+          {
+            "node": "Respond - FAQ Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Manual Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama - SalesGenie Router1": {
+      "main": [
+        [
+          {
+            "node": "Parse Router Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Save Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Save Lead": {
+      "main": [
+        [
+          {
+            "node": "Ollama - Score & Classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama - Score & Classify": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Result1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Save AI Qualification": {
+      "main": [
+        [
+          {
+            "node": "Bulk Lead?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Langfuse - AI Trace",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets - Lead Register",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CRM - Create/Update Lead": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Customer Acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Customer Acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Transaction Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Langfuse - AI Trace": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Transaction Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Lead Register": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Transaction Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Transaction Log": {
+      "main": [
+        [
+          {
+            "node": "API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Result1": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Save AI Qualification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply ROUTE_CONFIG1": {
+      "main": [
+        [
+          {
+            "node": "Route By Type2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retail Router": {
+      "main": [
+        [
+          {
+            "node": "Email Ingestion Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SalesGenie Human Review Form": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route By Type2": {
+      "main": [
+        [
+          {
+            "node": "Retail Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bulk Router",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Catalog (FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Corporate Administrative Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PostgreSQL - Create Complaint",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "PostgreSQL - Create Complaint": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Immediate Apology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Immediate Apology": {
+      "main": [
+        [
+          {
+            "node": "Complaint Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Save AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Human Review Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB - Operational Log": {
+      "main": [
+        []
+      ]
+    },
+    "Gmail - Human Review Request": {
+      "main": [
+        [
+          {
+            "node": "HUMAN IN LOOP - Configure Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HUMAN IN LOOP - Configure Approval": {
+      "main": [
+        [
+          {
+            "node": "Decision - Refund?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision - Refund?": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Refund Decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PostgreSQL - Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Refund Decision": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Refund Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB - Finance Log": {
+      "main": [
+        []
+      ]
+    },
+    "PostgreSQL - Rejection": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Refund Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB - Admin Log": {
+      "main": [
+        []
+      ]
+    },
+    "Log Complaint - Review Pending1": {
+      "main": [
+        []
+      ]
+    },
+    "Gmail - Refund Approved": {
+      "main": [
+        [
+          {
+            "node": "Log Final Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Refund Rejected": {
+      "main": [
+        [
+          {
+            "node": "Log Final Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SalesGenieSupport Team Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Gmail Complaint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Gmail Complaint": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Create Complaint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complaint Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Complaint AI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complaint AI Data": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Save AI Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Complaint - Review Pending1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Router": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Immediate Bulk Hot Deal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Lead?": {
+      "main": [
+        [
+          {
+            "node": "HUMAN IN LOOP - Bulk offer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retail Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retail Lead?": {
+      "main": [
+        [
+          {
+            "node": "CRM - Create/Update Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "CRM - Create/Update Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HUMAN IN LOOP - Bulk offer": {
+      "main": [
+        [
+          {
+            "node": "CRM - Create/Update Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Response": {
+      "main": [
+        [
+          {
+            "node": "Lead converted to Warm or Hot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Save AI Analysis1": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Senior Sales Person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HUMAN IN LOOP - Configure Approval1": {
+      "main": [
+        [
+          {
+            "node": "Decision - Refund?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision - Refund?1": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Refund Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PostgreSQL - Rejection1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Refund Decision1": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Refund Approved1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Refund Approved1": {
+      "main": [
+        [
+          {
+            "node": "Log Final Decision2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Rejection1": {
+      "main": [
+        [
+          {
+            "node": "MongoDB - Admin Log1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gmail - Refund Rejected1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB - Admin Log1": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Refund Rejected1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Refund Rejected1": {
+      "main": [
+        [
+          {
+            "node": "Log Final Decision2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Immediate Bulk Hot Deal": {
+      "main": [
+        [
+          {
+            "node": "Deal Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deal Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Deal AI Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deal AI Data": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Save AI Analysis1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Hot Bulk Deal- Submitted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Senior Sales Person": {
+      "main": [
+        [
+          {
+            "node": "HUMAN IN LOOP - Configure Approval1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Error Context": {
+      "main": [
+        [
+          {
+            "node": "Dead-letter Lead If Known",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dead-letter Lead If Known": {
+      "main": [
+        [
+          {
+            "node": "Log Error Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error Event": {
+      "main": [
+        [
+          {
+            "node": "Real Failure?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Real Failure?": {
+      "main": [
+        [
+          {
+            "node": "Alert Operator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kafka": {
+      "main": [
+        []
+      ]
+    },
+    "Respond - Lead Processed": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Immediate Bulk Hot Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Input": {
+      "main": [
+        [
+          {
+            "node": "Ollama - SalesGenie Router1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Friday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Leads": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Email Weekly Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "fffa2f87-1371-41d3-9510-b9caacb2ba0b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "55e1f49104db06b15620f0e54bba380a0e89dcfc9a03d99d40c08efc0cb44c37"
+  },
+  "nodeGroups": [],
+  "id": "7Lv4FoTWI6QSuPp9",
+  "tags": []
+}
